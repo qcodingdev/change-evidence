@@ -93,3 +93,78 @@ export interface DiffResult {
   totalAdditions: number;
   totalDeletions: number;
 }
+
+// ─── Risk analysis model (prompt 03) ──────────────────────────
+
+/** Coarse category a changed file falls into, used for summarising. */
+export type FileCategory =
+  | 'production'
+  | 'test'
+  | 'config'
+  | 'dependency'
+  | 'migration'
+  | 'ci'
+  | 'documentation'
+  | 'style-asset';
+
+/** Risk severity for a single signal or file. */
+export type SignalSeverity = RiskLevel; // ok | low | medium | high
+
+/** The kind of risk signal detected. */
+export type SignalType =
+  | 'high-risk-path'
+  | 'config-change'
+  | 'dependency-change'
+  | 'migration-change'
+  | 'ci-change'
+  | 'secret-keyword'
+  | 'size-large-changeset'
+  | 'size-large-single-file'
+  | 'size-file-count'
+  | 'test-missing'
+  | 'test-deleted'
+  | 'public-api-change'
+  | 'low-risk-collapsed';
+
+/** A single risk signal emitted by the analysis. */
+export interface Signal {
+  type: SignalType;
+  severity: SignalSeverity;
+  /** Human-readable reason (locale-agnostic; renderer localizes). */
+  message: string;
+  /** Optional file paths this signal refers to. */
+  paths?: string[];
+}
+
+/** A high-risk file with the reasons it was flagged. */
+export interface HighRiskFile {
+  path: string;
+  category: FileCategory;
+  severity: SignalSeverity;
+  /** Categories of reasons (matching signal types). */
+  reasons: string[];
+}
+
+/** Aggregate summary of the changeset. */
+export interface RiskSummary {
+  fileCount: number;
+  totalAdditions: number;
+  totalDeletions: number;
+  productionFiles: number;
+  testFiles: number;
+  highRiskFiles: number;
+  byCategory: Record<FileCategory, number>;
+}
+
+/** Full risk report produced by the analysis engine. */
+export interface RiskReport {
+  /** Overall risk level (highest severity across all signals). */
+  overallRisk: RiskLevel;
+  summary: RiskSummary;
+  highRiskFiles: HighRiskFile[];
+  signals: Signal[];
+  /** Number of low-risk files collapsed (documentation / style-asset). */
+  collapsedLowRiskCount: number;
+  /** Actionable pre-commit checklist items. */
+  checklistItems: string[];
+}
