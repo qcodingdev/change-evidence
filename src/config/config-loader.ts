@@ -59,8 +59,16 @@ function asRiskLevel(value: unknown): RiskLevel | undefined {
   return lower in RISK_LEVEL_RANK ? (lower as RiskLevel) : undefined;
 }
 
-function asNumber(value: unknown): number | undefined {
-  return typeof value === 'number' && Number.isFinite(value)
+/**
+ * Validate that a value is a positive integer (>= 1). This applies to all
+ * numeric config thresholds (report limits, size thresholds, hook triggers).
+ * Zero, negatives, fractions and non-finite numbers are silently ignored.
+ */
+function asPositiveInt(value: unknown): number | undefined {
+  return typeof value === 'number' &&
+    Number.isFinite(value) &&
+    Number.isInteger(value) &&
+    value >= 1
     ? value
     : undefined;
 }
@@ -107,12 +115,12 @@ function applyRawConfig(
       const thresholds = r.sizeThresholds;
       if (thresholds && typeof thresholds === 'object') {
         const t = thresholds as Record<string, unknown>;
-        const maxFiles = asNumber(t.maxFiles);
+        const maxFiles = asPositiveInt(t.maxFiles);
         if (maxFiles !== undefined) result.risk.sizeThresholds.maxFiles = maxFiles;
-        const maxTotalLines = asNumber(t.maxTotalLines);
+        const maxTotalLines = asPositiveInt(t.maxTotalLines);
         if (maxTotalLines !== undefined)
           result.risk.sizeThresholds.maxTotalLines = maxTotalLines;
-        const maxSingleFileLines = asNumber(t.maxSingleFileLines);
+        const maxSingleFileLines = asPositiveInt(t.maxSingleFileLines);
         if (maxSingleFileLines !== undefined)
           result.risk.sizeThresholds.maxSingleFileLines = maxSingleFileLines;
       }
@@ -121,11 +129,11 @@ function applyRawConfig(
     const report = obj.report;
     if (report && typeof report === 'object') {
       const rp = report as Record<string, unknown>;
-      const maxFiles = asNumber(rp.maxFiles);
+      const maxFiles = asPositiveInt(rp.maxFiles);
       if (maxFiles !== undefined) result.report.maxFiles = maxFiles;
-      const maxRiskItems = asNumber(rp.maxRiskItems);
+      const maxRiskItems = asPositiveInt(rp.maxRiskItems);
       if (maxRiskItems !== undefined) result.report.maxRiskItems = maxRiskItems;
-      const maxChecklistItems = asNumber(rp.maxChecklistItems);
+      const maxChecklistItems = asPositiveInt(rp.maxChecklistItems);
       if (maxChecklistItems !== undefined)
         result.report.maxChecklistItems = maxChecklistItems;
       const collapseLowRisk = asBool(rp.collapseLowRisk);
@@ -143,7 +151,7 @@ function applyRawConfig(
       const trigger = h.trigger;
       if (trigger && typeof trigger === 'object') {
         const tr = trigger as Record<string, unknown>;
-        const minChangedFiles = asNumber(tr.minChangedFiles);
+        const minChangedFiles = asPositiveInt(tr.minChangedFiles);
         if (minChangedFiles !== undefined)
           result.hook.trigger.minChangedFiles = minChangedFiles;
         const minRiskLevel = asRiskLevel(tr.minRiskLevel);
@@ -228,6 +236,7 @@ export const __internals = {
   asHookMode,
   asRiskLevel,
   asStringArray,
+  asPositiveInt,
   applyRawConfig,
   findConfigPath,
 };

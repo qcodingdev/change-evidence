@@ -1,0 +1,4 @@
+M	src/main/java/com/example/auth/AuthService.java
+A	src/main/resources/application.yml
+D	src/legacy/OldService.java
+R100	src/old/path/Config.java	src/config/Config.java

@@ -7,11 +7,16 @@
  * implementations are injected as no-ops until their respective prompts land.
  */
 
-import { createProgram } from './commands.js';
+import { CommanderError } from 'commander';
+import { createProgram, handleCommanderError } from './commands.js';
 
 const program = createProgram();
 
 program.parseAsync(process.argv).catch((err: unknown) => {
+  if (err instanceof CommanderError) {
+    handleCommanderError(err);
+    return; // unreachable — handleCommanderError calls process.exit
+  }
   const msg = err instanceof Error ? err.message : String(err);
   process.stderr.write(`change-evidence: ${msg}\n`);
   process.exit(1);

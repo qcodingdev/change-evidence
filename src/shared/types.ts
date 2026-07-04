@@ -60,3 +60,36 @@ export interface ResolvedOptions {
   hookMode?: boolean;
   config: ChangeEvidenceConfig;
 }
+
+// ─── Git diff data model (prompt 02) ──────────────────────────
+
+/** Normalized git file status. */
+export type FileStatus = 'added' | 'modified' | 'deleted' | 'renamed';
+
+/**
+ * A single changed file as understood by Change Evidence.
+ *
+ * `patch` is the `git diff --unified=0` hunk text, with secret-looking
+ * values redacted before it ever reaches the report layer.
+ */
+export interface FileChange {
+  path: string;
+  /** For renames, the original path; undefined otherwise. */
+  oldPath?: string;
+  status: FileStatus;
+  /** Lines added, from numstat. Binary files report 0. */
+  additions: number;
+  /** Lines deleted, from numstat. Binary files report 0. */
+  deletions: number;
+  /** Patch hunks from `git diff --unified=0`, secrets redacted. */
+  patch: string;
+  /** Lowercased file extension without the leading dot (e.g. "ts", "yml"). */
+  extension: string;
+}
+
+/** Aggregate diff result across all changed files in a scope. */
+export interface DiffResult {
+  files: FileChange[];
+  totalAdditions: number;
+  totalDeletions: number;
+}

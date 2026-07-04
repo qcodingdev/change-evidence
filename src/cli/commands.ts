@@ -1,4 +1,4 @@
-import { Command, Option } from 'commander';
+import { Command, Option, CommanderError } from 'commander';
 import type {
   ChangeEvidenceConfig,
   CliFlags,
@@ -26,7 +26,6 @@ export interface CreateProgramDeps {
   runAnalysis?: RunAnalysis;
   installHook?: InstallHook;
   cwd?: string;
-  exitProcess?: boolean;
   stdout?: NodeJS.WritableStream;
 }
 
@@ -75,7 +74,6 @@ export function createProgram(deps: CreateProgramDeps = {}): Command {
     runAnalysis = () => undefined,
     installHook = () => undefined,
     cwd,
-    exitProcess = true,
     stdout = process.stdout,
   } = deps;
 
@@ -84,23 +82,14 @@ export function createProgram(deps: CreateProgramDeps = {}): Command {
   program
     .name('change-evidence')
     .description('Pre-commit risk summaries for AI-assisted code changes.')
-    .argument(
-      '[install-hook]',
-      'install a pre-commit hook (alias: use the `hook` subcommand)',
-    )
+    // Reject any positional arguments — they must be explicit subcommands.
+    .allowExcessArguments(false)
     .option('--staged', 'analyse staged changes (git diff --cached)')
     .option('--base <ref>', 'analyse branch diff against <ref> (e.g. main)')
     .addOption(buildLanguageOption())
     .option('--no-color', 'disable colored output')
     .option('--hook', 'internal flag set by the installed pre-commit hook')
-    .action(async (positional, passedFlags: CliFlags) => {
-      // Positional `install-hook` is tolerated as a convenience alias.
-      if (positional === 'install-hook') {
-        const config = loadConfig(cwd).config;
-        await installHook({ config, interactive: true });
-        return;
-      }
-
+    .action(async (passedFlags: CliFlags) => {
       const config = loadConfig(cwd).config;
       const options = resolveOptions(passedFlags, config);
       await runAnalysis(options);
@@ -109,13 +98,14 @@ export function createProgram(deps: CreateProgramDeps = {}): Command {
   program
     .command('hook <action>')
     .description('manage git hooks; action: install')
+    .allowExcessArguments(false)
     .action(async (action: string) => {
       if (action !== 'install') {
-        stdout.write(
-          `Unknown hook action: ${action}. Supported action: install.\n`,
+        throw new CommanderError(
+          1,
+          'change-evidence.hook.unknownAction',
+          `Unknown hook action: ${action}. Supported action: install.`,
         );
-        if (exitProcess) process.exit(1);
-        return;
       }
       const config = loadConfig(cwd).config;
       await installHook({ config, interactive: true });
@@ -125,16 +115,36 @@ export function createProgram(deps: CreateProgramDeps = {}): Command {
   program
     .command('install-hook')
     .description('install a pre-commit hook')
+    .allowExcessArguments(false)
     .action(async () => {
       const config = loadConfig(cwd).config;
       await installHook({ config, interactive: true });
     });
 
+  // Always override exit so we can distinguish help (exit 0) from real errors.
   program.exitOverride();
-  if (!exitProcess) {
-    // Prevent commander from calling process.exit on --help / errors when the
-    // caller (e.g. a test harness) wants to keep the process alive.
-  }
 
   return program;
+}
+
+/**
+ * Commander error codes that indicate "the user asked for help or version
+ * output" — these are not errors and should exit 0.
+ */
+const HELP_EXIT_CODES = new Set([
+  'commander.help',
+  'commander.helpDisplayed',
+  'commander.version',
+]);
+
+/**
+ * Handle a CommanderError thrown by exitOverride. Help / version exits 0;
+ * all other errors exit 1 with a message on stderr.
+ */
+export function handleCommanderError(err: CommanderError): never {
+  if (HELP_EXIT_CODES.has(err.code)) {
+    process.exit(0);
+  }
+  process.stderr.write(`change-evidence: ${err.message}\n`);
+  process.exit(1);
 }

@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { createProgram } from '../src/cli/commands.js';
+import { CommanderError } from 'commander';
+import { createProgram, handleCommanderError } from '../src/cli/commands.js';
 import type { ResolvedOptions } from '../src/shared/types.js';
 
 /**
@@ -8,10 +9,6 @@ import type { ResolvedOptions } from '../src/shared/types.js';
  */
 async function runProgram(
   argv: string[],
-  opts: {
-    runAnalysis?: (o: ResolvedOptions) => void;
-    installHook?: () => void;
-  } = {},
 ): Promise<{
   analysisCalls: ResolvedOptions[];
   hookCalls: number;
@@ -25,13 +22,10 @@ async function runProgram(
     cwd: new URL('./fixtures', import.meta.url).pathname,
     runAnalysis: async (o) => {
       analysisCalls.push(o);
-      opts.runAnalysis?.(o);
     },
     installHook: async () => {
       hookCalls.count += 1;
-      opts.installHook?.();
     },
-    exitProcess: false,
     stdout: {
       write: (s: string) => {
         stdout.push(s);
@@ -40,7 +34,6 @@ async function runProgram(
     } as NodeJS.WritableStream,
   });
 
-  // commander mutates process.argv via parse; pass [node, script, ...args].
   await program.parseAsync(['node', 'ce', ...argv]);
   return { analysisCalls, hookCalls: hookCalls.count, stdout };
 }
@@ -86,7 +79,9 @@ describe('createProgram CLI routing', () => {
   });
 
   it('rejects an invalid --language value', async () => {
-    await expect(runProgram(['--language', 'fr'])).rejects.toThrow();
+    await expect(runProgram(['--language', 'fr'])).rejects.toThrow(
+      CommanderError,
+    );
   });
 
   it('routes `ce install-hook` to the install handler', async () => {
@@ -105,14 +100,44 @@ describe('createProgram CLI routing', () => {
   });
 
   it('rejects unknown hook actions', async () => {
-    const { hookCalls, stdout } = await runProgram(['hook', 'remove']);
-    expect(hookCalls).toBe(0);
-    expect(stdout.join('')).toContain('Unknown hook action');
+    const err = await runProgram(['hook', 'remove']).catch((e) => e);
+    expect(err).toBeInstanceOf(CommanderError);
+    expect((err as CommanderError).message).toContain('Unknown hook action');
   });
 
   it('passes the hook flag through to resolved options', async () => {
     const { analysisCalls } = await runProgram(['--staged', '--hook']);
     expect(analysisCalls[0].scope).toBe('staged');
     expect(analysisCalls[0].hookMode).toBe(true);
+  });
+
+  it('rejects unknown positional arguments', async () => {
+    await expect(runProgram(['foo'])).rejects.toThrow(CommanderError);
+  });
+
+  it('rejects misspelled flags like --statged', async () => {
+    await expect(runProgram(['--statged'])).rejects.toThrow(CommanderError);
+  });
+});
+
+describe('handleCommanderError', () => {
+  function makeError(code: string, exitCode: number, message = 'test'): CommanderError {
+    return new CommanderError(exitCode, code, message);
+  }
+
+  it('exits 0 for help display', () => {
+    const err = makeError('commander.helpDisplayed', 0);
+    // vitest intercepts process.exit as an error with the exit code.
+    expect(() => handleCommanderError(err)).toThrow('0');
+  });
+
+  it('exits 0 for commander.help', () => {
+    const err = makeError('commander.help', 0);
+    expect(() => handleCommanderError(err)).toThrow('0');
+  });
+
+  it('exits 1 for unknown option errors', () => {
+    const err = makeError('commander.unknownOption', 1);
+    expect(() => handleCommanderError(err)).toThrow('1');
   });
 });
