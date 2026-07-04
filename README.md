@@ -2,6 +2,8 @@
 
 English | [简体中文](README.zh-CN.md)
 
+[![CI](https://github.com/qcodingdev/change-evidence/actions/workflows/ci.yml/badge.svg)](https://github.com/qcodingdev/change-evidence/actions/workflows/ci.yml)
+
 Pre-commit risk summaries for AI-assisted code changes.
 
 Change Evidence is a local, CLI-first tool that summarizes risky parts of your uncommitted code changes before you commit. It is designed for the moment after AI coding tools modify many files and you want a short, deterministic report: what changed, where the risk signals are, and what to check before committing.
@@ -18,7 +20,7 @@ npm install -g change-evidence
 
 After npm installation, Change Evidence prints the next step: enter a git repository and run `ce install-hook` if you want automatic pre-commit checks.
 
-After the package is published, you can also use the one-line installer:
+Or use the one-line installer:
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/qcodingdev/change-evidence/main/install.sh | sh
@@ -210,6 +212,12 @@ npm uninstall -g change-evidence
 ## Privacy
 
 Change Evidence runs locally. It shells out to `git diff`, analyzes the output in process, and prints a terminal report. It does not send code, diffs, or secrets to a remote service.
+
+## Contributing
+
+Contributions are welcome. Please read [CONTRIBUTING.md](CONTRIBUTING.md) before opening a pull request.
+
+For security reports, please read [SECURITY.md](SECURITY.md). Do not paste real secrets, credentials, or private code into public issues.
 
 ## Development
 

@@ -2,6 +2,8 @@
 
 [English](README.md) | 简体中文
 
+[![CI](https://github.com/qcodingdev/change-evidence/actions/workflows/ci.yml/badge.svg)](https://github.com/qcodingdev/change-evidence/actions/workflows/ci.yml)
+
 AI coding 后，在 commit 前快速看清本地代码改动风险。
 
 Change Evidence 是一个本地优先、CLI-first 的提交前风险摘要工具。它适合在 AI coding 工具一次修改大量文件后使用：你可以在提交前看到精简的终端报告，了解改了哪些区域、命中了哪些风险信号、提交前还需要检查什么。
@@ -18,7 +20,7 @@ npm install -g change-evidence
 
 npm 安装完成后，Change Evidence 会提示下一步：进入某个 git 仓库后执行 `ce install-hook`，即可启用自动提交前检查。
 
-包发布后，也可以使用一行安装脚本：
+也可以使用一行安装脚本：
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/qcodingdev/change-evidence/main/install.sh | sh
@@ -210,6 +212,12 @@ npm uninstall -g change-evidence
 ## 隐私
 
 Change Evidence 在本地运行。它调用 `git diff`，在当前进程中分析输出，然后打印终端报告。它不会把代码、diff 或 secret 发送到远程服务。
+
+## 贡献
+
+欢迎贡献代码。提交 pull request 前请先阅读 [CONTRIBUTING.md](CONTRIBUTING.md)。
+
+安全问题请阅读 [SECURITY.md](SECURITY.md)。请不要在公开 issue 中粘贴真实 secret、凭证或私有代码。
 
 ## 开发
 
