@@ -1,0 +1,42 @@
+{
+  "name": "change-evidence",
+  "version": "0.1.0",
+  "description": "Pre-commit risk summaries for AI-assisted code changes.",
+  "type": "module",
+  "bin": {
+    "change-evidence": "./dist/cli/index.js",
+    "ce": "./dist/cli/index.js"
+  },
+  "scripts": {
+    "build": "tsup src/cli/index.ts --format esm --dts --clean --out-dir dist/cli",
+    "dev": "tsx src/cli/index.ts",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  },
+  "keywords": [
+    "git",
+    "diff",
+    "cli",
+    "pre-commit",
+    "ai-coding",
+    "risk-report"
+  ],
+  "license": "MIT",
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "chalk": "^5.4.1",
+    "commander": "^12.1.0",
+    "execa": "^9.5.2",
+    "picomatch": "^4.0.2",
+    "yaml": "^2.6.1"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.2",
+    "tsx": "^4.19.2",
+    "tsup": "^8.3.5",
+    "typescript": "^5.7.2",
+    "vitest": "^2.1.8"
+  }
+}

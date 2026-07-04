@@ -1,0 +1,1 @@
+// Terminal color palette placeholder.
