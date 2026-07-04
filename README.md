@@ -2,98 +2,221 @@
 
 English | [简体中文](README.zh-CN.md)
 
-Understand risky code changes before you commit.
+Pre-commit risk summaries for AI-assisted code changes.
 
-Change Evidence is a local CLI that generates a concise risk report for your uncommitted code changes. It is especially useful after AI coding tools such as Claude Code, Codex, Cursor, OpenCode, Trae, or Qoder modify many files and you want to understand what changed before committing.
+Change Evidence is a local, CLI-first tool that summarizes risky parts of your uncommitted code changes before you commit. It is designed for the moment after AI coding tools modify many files and you want a short, deterministic report: what changed, where the risk signals are, and what to check before committing.
 
-It is not an AI code reviewer. It does not fix code, revert changes, approve commits, or manage pull requests. It only summarizes changed files, risk signals, missing tests, and commit-time checklist items.
+It is not an AI code reviewer. It does not judge code correctness, fix code, revert changes, approve commits, open pull requests, or upload your code. It only reads local git diffs and prints a concise terminal report.
 
-## What It Does
+## Install
 
-Run it before commit with the full command or the short alias:
+Requires Node.js 20+ and `git`.
 
 ```bash
-change-evidence --staged
-ce --staged
+npm install -g change-evidence
 ```
 
-`ce` is the short daily command for terminals, IDE tasks, and hooks.
+After npm installation, Change Evidence prints the next step: enter a git repository and run `ce install-hook` if you want automatic pre-commit checks.
 
-It reports:
+After the package is published, you can also use the one-line installer:
 
-- changed file summary
-- production vs test file ratio
-- high-risk paths such as auth, security, payment, config, migration, CI/CD
-- large change signals
-- missing test signals
-- sensitive keyword signals without printing secret values
-- pre-commit checklist
-- collapsed low-risk changes
+```bash
+curl -fsSL https://raw.githubusercontent.com/qcodingdev/change-evidence/main/install.sh | sh
+```
 
-## Main Use Case
+The installer uses npm to install the CLI globally. If you run it inside a git repository, it starts the optional hook setup flow: choose the output language first, then decide whether to install the hook, then choose mode and trigger thresholds. Hook installation is never silent or forced.
+
+For local testing from a cloned repository:
+
+```bash
+npm install
+npm run build
+npm install -g .
+```
+
+## Usage
+
+Change Evidence provides two identical commands:
+
+- `ce`
+- `change-evidence`
+
+Daily usage usually feels best with `ce`:
+
+```bash
+# Analyze staged changes before commit
+ce --staged
+
+# Analyze unstaged working-tree changes
+ce
+
+# Analyze a branch diff against main
+ce --base main
+```
+
+## Commands
+
+| Command | Description |
+|---|---|
+| `ce` | Analyze working-tree changes with `git diff` |
+| `ce --staged` | Analyze staged changes with `git diff --cached` |
+| `ce --base main` | Analyze `git diff main...HEAD` |
+| `ce --language en` | Print English output |
+| `ce --language zh-CN` | Print Chinese output |
+| `ce --no-color` | Disable terminal colors |
+| `ce install-hook` | Install the optional pre-commit hook |
+| `ce install-hook --force` | Replace an existing non-managed pre-commit hook |
+| `ce hook install` | Alias for `ce install-hook` |
+
+## Example Output
 
 ```text
-AI coding tool changes many files
-  -> developer stages changes
-  -> Change Evidence prints a risk report
-  -> developer decides whether to commit, add tests, split changes, or inspect risky files
+Change Evidence code change risk report
+
+Scope: staged changes    Risk level: high
+
+Summary
+- Files changed: 12
+- Lines added: 326
+- Lines deleted: 48
+- Production files: 7
+- Test files: 0
+- High-risk files: 3
+
+High-risk changes
+[HIGH] src/auth/AuthService.ts
+  matches high-risk path; public API changed
+
+Risk signals
+[HIGH] Sensitive keywords detected: token, password
+[WARN] Production code changed but no test files were modified
+
+Pre-commit checklist
+[ ] Confirm no real secrets / credentials are being committed
+[ ] Add or update tests for the changed production code
 ```
 
-## Optional Git Hook
+## What It Detects
 
-The first version treats pre-commit hook support as a core workflow, but setup must ask users how it should trigger.
+Change Evidence uses deterministic rules over local git diff output. No LLM is required.
 
-Recommended usage: install the hook and let it automatically print a report when many files changed or the risk level reaches the configured threshold.
+- High-risk paths: `auth`, `security`, `payment`, `migration`, `database`, `config`, CI/CD workflows, `.env*`, `Dockerfile`, `application.yml`, `package.json`, `pom.xml`, `build.gradle`
+- Test signals: production code changed without tests, critical areas changed without tests, test files deleted
+- Large-change signals: many changed files, large total line count, large single-file change
+- Config/dependency/database/CI changes
+- Sensitive keywords such as `token`, `secret`, `password`, `private_key`, `api_key`, `access_key`, `authorization`
+- Public API signals such as exported TypeScript/JavaScript symbols, Java public methods, Spring route mappings, `/api/` and `/routes/` changes
 
-Install commands:
+Secret-looking values are redacted before report rendering. The report may mention the keyword, but it does not print the secret value.
 
-```bash
-change-evidence install-hook
-ce hook install
-```
+## Configuration
 
-During setup, users can choose whether to install the hook and how it should trigger:
+Create `.change-evidence.yml` in your repository:
 
 ```yaml
+language: zh-CN # zh-CN | en
+
+risk:
+  highPaths:
+    - "**/auth/**"
+    - "**/security/**"
+    - "**/payment/**"
+    - "**/migration/**"
+    - "**/database/**"
+    - "**/config/**"
+    - ".github/workflows/**"
+    - "**/application.yml"
+    - "**/application.yaml"
+    - ".env*"
+    - "Dockerfile"
+    - "pom.xml"
+    - "package.json"
+    - "build.gradle"
+  sensitiveKeywords:
+    - token
+    - secret
+    - password
+    - private_key
+    - api_key
+    - access_key
+    - authorization
+  sizeThresholds:
+    maxFiles: 10
+    maxTotalLines: 500
+    maxSingleFileLines: 200
+
+report:
+  maxFiles: 20
+  maxRiskItems: 10
+  maxChecklistItems: 8
+  collapseLowRisk: true
+
 hook:
   enabled: true
-  mode: prompt
+  mode: prompt # off | report | prompt | block
   trigger:
     minChangedFiles: 10
-    minRiskLevel: medium
+    minRiskLevel: medium # ok | low | medium | high
 ```
+
+Invalid config values are ignored and fall back to defaults.
+
+## Pre-commit Hook
+
+Install the optional hook inside a git repository:
+
+```bash
+ce install-hook
+```
+
+The installer asks for:
+
+- output language
+- whether to install the hook
+- hook mode
+- trigger thresholds
+
+It writes a managed `.git/hooks/pre-commit` script and persists your answers to `.change-evidence.yml`.
+
+Hooks are repository-local. Installing the hook in one project does not affect other projects. If your IDE commits through normal git hooks, such as IntelliJ IDEA's default Git commit flow, the hook will run there too. Commits made with `--no-verify` or IDE settings that skip hooks will not trigger it.
 
 Hook modes:
 
-- `off`: never run automatically
-- `report`: print a report and continue
-- `prompt`: ask whether to continue when trigger rules match
-- `block`: block only when explicit high-risk rules match, not recommended as default
+| Mode | Behavior |
+|---|---|
+| `off` | Do not run automatically |
+| `report` | Print the report and allow the commit |
+| `prompt` | Ask whether to continue when trigger rules match |
+| `block` | Block only when a high-risk trigger matches |
 
-The setup should recommend hook installation, but it must not silently force it. Users should explicitly choose the trigger mode and threshold, such as automatically reporting when more than 10 files changed.
+Trigger rules use both changed-file count and overall risk level. Existing pre-commit hooks not created by Change Evidence are preserved unless you pass `--force`.
 
-## Output Style
+## Privacy
 
-The first version uses one unified terminal report format with clean layout and colors. It does not provide many output templates in v1.
+Change Evidence runs locally. It shells out to `git diff`, analyzes the output in process, and prints a terminal report. It does not send code, diffs, or secrets to a remote service.
 
-Future wrappers can reuse the same report core for:
+## Development
 
-- IDE commands
-- pre-commit hook
-- GitHub Action
-- GitLab CI
-- local markdown export
+```bash
+npm install
+npm run typecheck
+npm test
+npm run build
+```
 
-## Boundary
+Useful local commands:
 
-Change Evidence only reports evidence and risk signals.
+```bash
+npm run dev -- --staged
+node dist/cli/index.js --staged --no-color
+```
 
-It does not:
+## Author
 
-- review code correctness
-- auto-fix code
-- run `git reset`
-- run `git revert`
-- create rollback PRs
-- approve or reject commits
-- upload code by default
+Created by QCoding.
+
+QCoding focuses on AI application development and Java engineering practice.
+
+## License
+
+MIT

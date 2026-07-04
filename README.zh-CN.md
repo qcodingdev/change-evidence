@@ -2,98 +2,221 @@
 
 [English](README.md) | 简体中文
 
-在 commit 前，看清这次代码改动的风险。
+AI coding 后，在 commit 前快速看清本地代码改动风险。
 
-Change Evidence 是一个本地 CLI，用来为未提交的代码改动生成简洁的风险报告。它尤其适合 Claude Code、Codex、Cursor、OpenCode、Trae、Qoder 等 AI coding 工具一次修改很多文件后，开发者在提交前快速了解：到底改了什么、哪些地方有风险、是否缺少测试。
+Change Evidence 是一个本地优先、CLI-first 的提交前风险摘要工具。它适合在 AI coding 工具一次修改大量文件后使用：你可以在提交前看到精简的终端报告，了解改了哪些区域、命中了哪些风险信号、提交前还需要检查什么。
 
-它不是 AI Code Reviewer，不修代码，不回滚，不批准提交，也不管理 PR。它只做一件事：输出修改摘要和风险信号。
+它不是 AI Code Reviewer。它不判断代码正确性，不修代码，不回滚，不批准提交，不创建 PR，也不会上传你的代码。它只读取本地 git diff，并输出克制的风险摘要。
 
-## 它要做什么
+## 安装
 
-提交前运行完整命令或短命令：
+需要 Node.js 20+ 和 `git`。
 
 ```bash
-change-evidence --staged
-ce --staged
+npm install -g change-evidence
 ```
 
-`ce` 是日常使用的短命令，适合在终端、IDE task 或 hook 中快速触发。
+npm 安装完成后，Change Evidence 会提示下一步：进入某个 git 仓库后执行 `ce install-hook`，即可启用自动提交前检查。
 
-它会输出：
+包发布后，也可以使用一行安装脚本：
 
-- 变更文件摘要
-- 生产代码和测试代码比例
-- 高风险路径，例如 auth、security、payment、config、migration、CI/CD
-- 大改动信号
-- 测试缺失信号
-- 敏感关键词信号，但不打印 secret 值
-- 提交前 checklist
-- 折叠低风险变更
+```bash
+curl -fsSL https://raw.githubusercontent.com/qcodingdev/change-evidence/main/install.sh | sh
+```
 
-## 主要使用场景
+安装脚本会通过 npm 全局安装 CLI。如果你在 git 仓库中运行，它会进入可选 hook 配置流程：先选择输出语言，再选择是否安装 hook，然后选择模式和触发阈值。Hook 不会被静默安装或强制启用。
+
+如果只是从源码仓库本地试用：
+
+```bash
+npm install
+npm run build
+npm install -g .
+```
+
+## 使用
+
+Change Evidence 提供两个等价命令：
+
+- `ce`
+- `change-evidence`
+
+日常建议使用短命令 `ce`：
+
+```bash
+# 分析暂存区改动，提交前最常用
+ce --staged
+
+# 分析未暂存的工作区改动
+ce
+
+# 分析当前分支相对 main 的差异
+ce --base main
+```
+
+## 命令
+
+| 命令 | 说明 |
+|---|---|
+| `ce` | 使用 `git diff` 分析工作区改动 |
+| `ce --staged` | 使用 `git diff --cached` 分析暂存区改动 |
+| `ce --base main` | 分析 `git diff main...HEAD` |
+| `ce --language en` | 输出英文报告 |
+| `ce --language zh-CN` | 输出中文报告 |
+| `ce --no-color` | 关闭终端颜色 |
+| `ce install-hook` | 安装可选 pre-commit hook |
+| `ce install-hook --force` | 覆盖已有的非本工具管理的 pre-commit hook |
+| `ce hook install` | `ce install-hook` 的别名 |
+
+## 输出示例
 
 ```text
-AI coding 工具修改了很多文件
-  -> 开发者 git add
-  -> Change Evidence 输出风险报告
-  -> 开发者决定继续 commit、补测试、拆分改动或检查高风险文件
+Change Evidence 代码变更证据包
+
+范围：暂存区改动    风险等级：高风险
+
+摘要
+- 变更文件：12
+- 新增行数：326
+- 删除行数：48
+- 生产代码文件：7
+- 测试文件：0
+- 高风险文件：3
+
+高风险变更
+[HIGH] src/auth/AuthService.ts
+  命中高风险路径；公开 API 变更
+
+风险信号
+[HIGH] 检测到敏感关键词：token, password
+[WARN] 生产代码有变更，但没有测试文件变更
+
+提交前建议
+[ ] 确认没有误提交真实密钥
+[ ] 为改动过的生产代码补充或更新测试
 ```
 
-## 可选 Git Hook
+## 检测内容
 
-第一版把 pre-commit hook 作为核心能力之一，但安装时必须让用户选择触发等级。
+Change Evidence 基于本地 git diff 和确定性规则工作，不需要 LLM。
 
-推荐体验是：用户安装后直接配置 hook，当修改文件过多或风险达到阈值时自动触发报告。
+- 高风险路径：`auth`、`security`、`payment`、`migration`、`database`、`config`、CI/CD workflow、`.env*`、`Dockerfile`、`application.yml`、`package.json`、`pom.xml`、`build.gradle`
+- 测试信号：生产代码变更但测试未变、关键区域变更但无测试、测试文件被删除
+- 大改动信号：文件数过多、总行数过多、单文件改动过大
+- 配置、依赖、数据库迁移、CI/CD 变更
+- 敏感关键词：`token`、`secret`、`password`、`private_key`、`api_key`、`access_key`、`authorization`
+- 公开 API 信号：TypeScript/JavaScript export、Java public 方法、Spring route mapping、`/api/` 和 `/routes/` 改动
 
-安装命令：
+疑似 secret 的值会在报告渲染前被脱敏。报告可能提示命中的关键词，但不会打印 secret 值。
 
-```bash
-change-evidence install-hook
-ce hook install
-```
+## 配置
 
-安装时让用户选择是否开启 hook，以及什么条件下触发：
+在仓库中创建 `.change-evidence.yml`：
 
 ```yaml
+language: zh-CN # zh-CN | en
+
+risk:
+  highPaths:
+    - "**/auth/**"
+    - "**/security/**"
+    - "**/payment/**"
+    - "**/migration/**"
+    - "**/database/**"
+    - "**/config/**"
+    - ".github/workflows/**"
+    - "**/application.yml"
+    - "**/application.yaml"
+    - ".env*"
+    - "Dockerfile"
+    - "pom.xml"
+    - "package.json"
+    - "build.gradle"
+  sensitiveKeywords:
+    - token
+    - secret
+    - password
+    - private_key
+    - api_key
+    - access_key
+    - authorization
+  sizeThresholds:
+    maxFiles: 10
+    maxTotalLines: 500
+    maxSingleFileLines: 200
+
+report:
+  maxFiles: 20
+  maxRiskItems: 10
+  maxChecklistItems: 8
+  collapseLowRisk: true
+
 hook:
   enabled: true
-  mode: prompt
+  mode: prompt # off | report | prompt | block
   trigger:
     minChangedFiles: 10
-    minRiskLevel: medium
+    minRiskLevel: medium # ok | low | medium | high
 ```
+
+非法配置会被忽略，并回退到默认值。
+
+## Pre-commit Hook
+
+在 git 仓库内安装可选 hook：
+
+```bash
+ce install-hook
+```
+
+安装器会询问：
+
+- 输出语言
+- 是否安装 hook
+- hook 模式
+- 触发阈值
+
+它会写入一个由 Change Evidence 管理的 `.git/hooks/pre-commit` 脚本，并把你的选择保存到 `.change-evidence.yml`。
+
+Hook 按仓库生效。在一个项目里安装 hook，不会影响其他项目。如果 IDE 走标准 git hooks 流程提交，例如 IntelliJ IDEA 默认的 Git commit 流程，也会触发该 hook。使用 `--no-verify` 或 IDE 中跳过 hooks 的设置时不会触发。
 
 Hook 模式：
 
-- `off`：不自动运行
-- `report`：只打印报告，不打断提交
-- `prompt`：命中触发条件时询问是否继续提交
-- `block`：仅在显式高风险规则命中时阻止提交，默认不推荐
+| 模式 | 行为 |
+|---|---|
+| `off` | 不自动运行 |
+| `report` | 打印报告并继续提交 |
+| `prompt` | 命中触发规则时询问是否继续 |
+| `block` | 仅在高风险触发规则命中时阻止提交 |
 
-默认推荐安装 hook，但不能静默强制安装。用户必须明确选择触发模式和触发阈值，例如改动文件数大于 10 时自动输出报告。
+触发规则同时使用变更文件数和总体风险等级。已有的非 Change Evidence 管理的 pre-commit hook 会被保留，除非传入 `--force`。
 
-## 输出格式
+## 隐私
 
-第一版只提供统一的终端报告格式，重点是排版清晰、颜色美观、信息克制。不做很多模板。
+Change Evidence 在本地运行。它调用 `git diff`，在当前进程中分析输出，然后打印终端报告。它不会把代码、diff 或 secret 发送到远程服务。
 
-后续可以复用同一套报告核心扩展到：
+## 开发
 
-- IDE 命令
-- pre-commit hook
-- GitHub Action
-- GitLab CI
-- 本地 Markdown 导出
+```bash
+npm install
+npm run typecheck
+npm test
+npm run build
+```
 
-## 边界
+常用本地命令：
 
-Change Evidence 只输出证据和风险信号。
+```bash
+npm run dev -- --staged
+node dist/cli/index.js --staged --no-color
+```
 
-它不做：
+## 作者
 
-- 判断代码正确性
-- 自动修复代码
-- 执行 `git reset`
-- 执行 `git revert`
-- 创建回滚 PR
-- 自动批准或拒绝提交
-- 默认上传代码
+由 QCoding 创建。
+
+QCoding｜专注 AI 应用开发与 Java 技术实践。
+
+## 许可证
+
+MIT

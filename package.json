@@ -1,17 +1,27 @@
 {
   "name": "change-evidence",
   "version": "0.1.0",
-  "description": "Pre-commit risk summaries for AI-assisted code changes.",
+  "description": "Local pre-commit risk summaries for AI-assisted code changes.",
   "type": "module",
   "bin": {
     "change-evidence": "./dist/cli/index.js",
     "ce": "./dist/cli/index.js"
   },
+  "files": [
+    "dist/",
+    "install.sh",
+    "scripts/postinstall.cjs",
+    "README.md",
+    "README.zh-CN.md",
+    "LICENSE"
+  ],
   "scripts": {
     "build": "tsup src/cli/index.ts --format esm --dts --clean --out-dir dist/cli",
     "dev": "tsx src/cli/index.ts",
+    "postinstall": "node scripts/postinstall.cjs",
     "test": "vitest run",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "prepublishOnly": "npm run typecheck && npm test && npm run build"
   },
   "keywords": [
     "git",
@@ -19,12 +29,21 @@
     "cli",
     "pre-commit",
     "ai-coding",
-    "risk-report"
+    "risk-report",
+    "change-evidence"
   ],
   "license": "MIT",
   "engines": {
     "node": ">=20"
   },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/qcodingdev/change-evidence.git"
+  },
+  "bugs": {
+    "url": "https://github.com/qcodingdev/change-evidence/issues"
+  },
+  "homepage": "https://github.com/qcodingdev/change-evidence#readme",
   "dependencies": {
     "chalk": "^5.4.1",
     "commander": "^12.1.0",

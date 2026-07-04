@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { CommanderError } from 'commander';
 import { createProgram, handleCommanderError } from '../src/cli/commands.js';
-import type { ResolvedOptions } from '../src/shared/types.js';
+import type { ChangeEvidenceConfig, ResolvedOptions } from '../src/shared/types.js';
 
 /**
  * Drive a program instance with the given argv and capture calls to the
@@ -11,11 +11,19 @@ async function runProgram(
   argv: string[],
 ): Promise<{
   analysisCalls: ResolvedOptions[];
-  hookCalls: number;
+  hookCalls: Array<{
+    config: ChangeEvidenceConfig;
+    interactive: boolean;
+    force?: boolean;
+  }>;
   stdout: string[];
 }> {
   const analysisCalls: ResolvedOptions[] = [];
-  const hookCalls = { count: 0 };
+  const hookCalls: Array<{
+    config: ChangeEvidenceConfig;
+    interactive: boolean;
+    force?: boolean;
+  }> = [];
   const stdout: string[] = [];
 
   const program = createProgram({
@@ -23,8 +31,8 @@ async function runProgram(
     runAnalysis: async (o) => {
       analysisCalls.push(o);
     },
-    installHook: async () => {
-      hookCalls.count += 1;
+    installHook: async (options) => {
+      hookCalls.push(options);
     },
     stdout: {
       write: (s: string) => {
@@ -35,7 +43,7 @@ async function runProgram(
   });
 
   await program.parseAsync(['node', 'ce', ...argv]);
-  return { analysisCalls, hookCalls: hookCalls.count, stdout };
+  return { analysisCalls, hookCalls, stdout };
 }
 
 describe('createProgram CLI routing', () => {
@@ -86,7 +94,7 @@ describe('createProgram CLI routing', () => {
 
   it('routes `ce install-hook` to the install handler', async () => {
     const { analysisCalls, hookCalls } = await runProgram(['install-hook']);
-    expect(hookCalls).toBe(1);
+    expect(hookCalls).toHaveLength(1);
     expect(analysisCalls).toHaveLength(0);
   });
 
@@ -95,8 +103,18 @@ describe('createProgram CLI routing', () => {
       'hook',
       'install',
     ]);
-    expect(hookCalls).toBe(1);
+    expect(hookCalls).toHaveLength(1);
     expect(analysisCalls).toHaveLength(0);
+  });
+
+  it('passes --force through install-hook', async () => {
+    const { hookCalls } = await runProgram(['install-hook', '--force']);
+    expect(hookCalls[0].force).toBe(true);
+  });
+
+  it('passes --force through hook install', async () => {
+    const { hookCalls } = await runProgram(['hook', 'install', '--force']);
+    expect(hookCalls[0].force).toBe(true);
   });
 
   it('rejects unknown hook actions', async () => {

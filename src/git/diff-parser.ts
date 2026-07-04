@@ -86,8 +86,6 @@ export function parseNumstat(raw: string): Map<string, { additions: number; dele
 
 /**
  * Default sensitive-key patterns used to redact values from patch output.
- * These match the V1 spec keywords: token, secret, password, private_key,
- * api_key, access_key, authorization.
  *
  * The regex captures the key name and separator (key = or key:), then
  * everything after it on the same line as the value — this handles

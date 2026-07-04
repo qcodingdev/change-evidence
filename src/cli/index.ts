@@ -2,9 +2,6 @@
 
 /**
  * Entry point shared by both `change-evidence` and `ce` (see package.json bin).
- *
- * Prompt 01 scope: only CLI + config wiring. The analysis and hook
- * implementations are injected as no-ops until their respective prompts land.
  */
 
 import { CommanderError } from 'commander';

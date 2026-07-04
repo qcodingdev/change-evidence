@@ -1,4 +1,7 @@
 import { Command, Option, CommanderError } from 'commander';
+import { execa } from 'execa';
+import * as readline from 'node:readline/promises';
+import { stdin as stdinStream, stdout as stdoutStream } from 'node:process';
 import type {
   ChangeEvidenceConfig,
   CliFlags,
@@ -7,20 +10,147 @@ import type {
   ResolvedOptions,
 } from '../shared/types.js';
 import { loadConfig, resolveLanguage } from '../config/config-loader.js';
+import { getDiff } from '../git/diff-source.js';
+import { analyse } from '../analysis/risk-engine.js';
+import { renderReport } from '../render/terminal-report.js';
+import { installHook } from '../hook/install-hook.js';
+import { runHook } from '../hook/hook-runner.js';
 
-/**
- * Placeholder for the real analysis run (implemented in a later prompt).
- * Kept minimal so this module stays within prompt 01's CLI/config scope.
- */
 export type RunAnalysis = (options: ResolvedOptions) => Promise<void> | void;
 
-/**
- * Placeholder for the real hook installer (implemented in a later prompt).
- */
 export type InstallHook = (options: {
   config: ChangeEvidenceConfig;
   interactive: boolean;
+  force?: boolean;
 }) => Promise<void> | void;
+
+/**
+ * Resolve the git working-tree root from cwd by running
+ * `git rev-parse --show-toplevel`. Falls back to cwd on any error.
+ */
+async function resolveGitRoot(cwd?: string): Promise<string> {
+  try {
+    const { stdout } = await execa('git', ['rev-parse', '--show-toplevel'], {
+      cwd: cwd ?? process.cwd(),
+      reject: true,
+    });
+    return stdout.trim();
+  } catch {
+    return cwd ?? process.cwd();
+  }
+}
+
+/**
+ * Default analysis pipeline: diff → analyse → render → stdout.
+ * When the internal --hook flag is set, also run the hook runner and exit
+ * with its returned code so the pre-commit hook can block the commit.
+ */
+async function defaultRunAnalysis(
+  options: ResolvedOptions,
+  cwd?: string,
+): Promise<void> {
+  if (
+    options.hookMode &&
+    (!options.config.hook.enabled || options.config.hook.mode === 'off')
+  ) {
+    return;
+  }
+
+  const diff = await getDiff(options.scope, { base: options.base, cwd });
+  const report = analyse(diff, options.config);
+  const output = renderReport(report, {
+    scope: options.scope,
+    language: options.language,
+    noColor: options.noColor,
+  });
+  process.stdout.write(output + '\n');
+
+  if (options.hookMode) {
+    const result = await runHook(report, options.config, {
+      promptYesNo: askYesNo,
+      write: (m) => process.stdout.write(m + '\n'),
+    });
+    if (result.exitCode !== 0) {
+      process.exit(result.exitCode);
+    }
+  }
+}
+
+/**
+ * Create a readline interface lazily. Returns null when stdin is not a TTY,
+ * signalling the caller to fall back to non-interactive defaults.
+ */
+function createRl(): readline.Interface | null {
+  if (!process.stdin.isTTY) return null;
+  return readline.createInterface({ input: stdinStream, output: stdoutStream });
+}
+
+async function askLine(rl: readline.Interface, question: string): Promise<string> {
+  const answer = await rl.question(question);
+  return answer.trim();
+}
+
+/** Yes/no prompter for the hook prompt mode. Non-TTY → default yes. */
+async function askYesNo(question: string): Promise<boolean> {
+  const rl = createRl();
+  if (!rl) return true;
+  const answer = (await askLine(rl, question)).toLowerCase();
+  rl.close();
+  return answer === 'y' || answer === 'yes';
+}
+
+/**
+ * Default hook installer: resolve git root, run interactive flow, write hook.
+ * Falls back to config defaults when stdin is not a TTY (piped / CI / hook).
+ */
+async function defaultInstallHook(options: {
+  config: ChangeEvidenceConfig;
+  interactive: boolean;
+  cwd?: string;
+  force?: boolean;
+}): Promise<void> {
+  const repoRoot = await resolveGitRoot(options.cwd);
+  const interactive = options.interactive && process.stdin.isTTY === true;
+
+  const { result } = await installHook(repoRoot, options.config, {
+    interactive,
+    bin: 'ce',
+    force: options.force,
+    io: {
+      askConfirm: async (q, def) => {
+        const rl = createRl();
+        if (!rl) return def;
+        const hint = def ? 'Y/n' : 'y/N';
+        const answer = (await askLine(rl, `${q} [${hint}] `)).toLowerCase();
+        rl.close();
+        if (answer === '') return def;
+        return answer === 'y' || answer === 'yes';
+      },
+      askChoice: async (q, _choices, def) => {
+        const rl = createRl();
+        if (!rl) return def;
+        const answer = await askLine(rl, `${q} (default: ${def}) `);
+        rl.close();
+        return (answer || def) as typeof def;
+      },
+      askNumber: async (q, def) => {
+        const rl = createRl();
+        if (!rl) return def;
+        const answer = await askLine(rl, `${q} (default: ${def}) `);
+        rl.close();
+        const n = parseInt(answer, 10);
+        return Number.isFinite(n) ? n : def;
+      },
+      write: (m) => process.stdout.write(m + '\n'),
+    },
+  });
+
+  if (!result.installed && result.preserved) {
+    // Existing non-managed hook — surface to user, exit non-zero so they notice.
+    process.stderr.write(`change-evidence: ${result.reason ?? 'hook not installed'}\n`);
+    process.exit(1);
+  }
+}
 
 export interface CreateProgramDeps {
   runAnalysis?: RunAnalysis;
@@ -65,24 +195,24 @@ function buildLanguageOption(): Option {
   ).choices(['zh-CN', 'en']);
 }
 
-/**
- * Build the commander program. Both `change-evidence` and `ce` share this
- * single program; the bin name is cosmetic.
- */
 export function createProgram(deps: CreateProgramDeps = {}): Command {
   const {
-    runAnalysis = () => undefined,
-    installHook = () => undefined,
+    runAnalysis,
+    installHook: installHookHandler,
     cwd,
     stdout = process.stdout,
   } = deps;
+
+  // Real handlers bound to cwd unless the caller injects test doubles.
+  const analysis: RunAnalysis = runAnalysis ?? ((options) => defaultRunAnalysis(options, cwd));
+  const doInstall: InstallHook =
+    installHookHandler ?? ((options) => defaultInstallHook({ ...options, cwd }));
 
   const program = new Command();
 
   program
     .name('change-evidence')
     .description('Pre-commit risk summaries for AI-assisted code changes.')
-    // Reject any positional arguments — they must be explicit subcommands.
     .allowExcessArguments(false)
     .option('--staged', 'analyse staged changes (git diff --cached)')
     .option('--base <ref>', 'analyse branch diff against <ref> (e.g. main)')
@@ -92,14 +222,15 @@ export function createProgram(deps: CreateProgramDeps = {}): Command {
     .action(async (passedFlags: CliFlags) => {
       const config = loadConfig(cwd).config;
       const options = resolveOptions(passedFlags, config);
-      await runAnalysis(options);
+      await analysis(options);
     });
 
   program
     .command('hook <action>')
     .description('manage git hooks; action: install')
     .allowExcessArguments(false)
-    .action(async (action: string) => {
+    .option('--force', 'overwrite an existing non-managed pre-commit hook')
+    .action(async (action: string, commandOptions: { force?: boolean }) => {
       if (action !== 'install') {
         throw new CommanderError(
           1,
@@ -108,39 +239,30 @@ export function createProgram(deps: CreateProgramDeps = {}): Command {
         );
       }
       const config = loadConfig(cwd).config;
-      await installHook({ config, interactive: true });
+      await doInstall({ config, interactive: true, force: commandOptions.force === true });
     });
 
-  // `install-hook` as a first-class subcommand (spec lists both forms).
   program
     .command('install-hook')
     .description('install a pre-commit hook')
     .allowExcessArguments(false)
-    .action(async () => {
+    .option('--force', 'overwrite an existing non-managed pre-commit hook')
+    .action(async (commandOptions: { force?: boolean }) => {
       const config = loadConfig(cwd).config;
-      await installHook({ config, interactive: true });
+      await doInstall({ config, interactive: true, force: commandOptions.force === true });
     });
 
-  // Always override exit so we can distinguish help (exit 0) from real errors.
   program.exitOverride();
 
   return program;
 }
 
-/**
- * Commander error codes that indicate "the user asked for help or version
- * output" — these are not errors and should exit 0.
- */
 const HELP_EXIT_CODES = new Set([
   'commander.help',
   'commander.helpDisplayed',
   'commander.version',
 ]);
 
-/**
- * Handle a CommanderError thrown by exitOverride. Help / version exits 0;
- * all other errors exit 1 with a message on stderr.
- */
 export function handleCommanderError(err: CommanderError): never {
   if (HELP_EXIT_CODES.has(err.code)) {
     process.exit(0);
