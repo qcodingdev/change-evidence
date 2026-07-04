@@ -4,8 +4,8 @@
   "description": "Local pre-commit risk summaries for AI-assisted code changes.",
   "type": "module",
   "bin": {
-    "change-evidence": "./dist/cli/index.js",
-    "ce": "./dist/cli/index.js"
+    "change-evidence": "dist/cli/index.js",
+    "ce": "dist/cli/index.js"
   },
   "files": [
     "dist/",
