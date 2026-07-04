@@ -16,6 +16,7 @@ async function runProgram(
     interactive: boolean;
     force?: boolean;
   }>;
+  uninstallCalls: ChangeEvidenceConfig[];
   stdout: string[];
 }> {
   const analysisCalls: ResolvedOptions[] = [];
@@ -24,6 +25,7 @@ async function runProgram(
     interactive: boolean;
     force?: boolean;
   }> = [];
+  const uninstallCalls: ChangeEvidenceConfig[] = [];
   const stdout: string[] = [];
 
   const program = createProgram({
@@ -34,6 +36,9 @@ async function runProgram(
     installHook: async (options) => {
       hookCalls.push(options);
     },
+    uninstallHook: async (options) => {
+      uninstallCalls.push(options.config);
+    },
     stdout: {
       write: (s: string) => {
         stdout.push(s);
@@ -43,7 +48,7 @@ async function runProgram(
   });
 
   await program.parseAsync(['node', 'ce', ...argv]);
-  return { analysisCalls, hookCalls, stdout };
+  return { analysisCalls, hookCalls, uninstallCalls, stdout };
 }
 
 describe('createProgram CLI routing', () => {
@@ -107,6 +112,21 @@ describe('createProgram CLI routing', () => {
     expect(analysisCalls).toHaveLength(0);
   });
 
+  it('routes `ce uninstall-hook` to the uninstall handler', async () => {
+    const { analysisCalls, uninstallCalls } = await runProgram(['uninstall-hook']);
+    expect(uninstallCalls).toHaveLength(1);
+    expect(analysisCalls).toHaveLength(0);
+  });
+
+  it('routes `ce hook uninstall` to the uninstall handler', async () => {
+    const { analysisCalls, uninstallCalls } = await runProgram([
+      'hook',
+      'uninstall',
+    ]);
+    expect(uninstallCalls).toHaveLength(1);
+    expect(analysisCalls).toHaveLength(0);
+  });
+
   it('passes --force through install-hook', async () => {
     const { hookCalls } = await runProgram(['install-hook', '--force']);
     expect(hookCalls[0].force).toBe(true);
@@ -121,6 +141,7 @@ describe('createProgram CLI routing', () => {
     const err = await runProgram(['hook', 'remove']).catch((e) => e);
     expect(err).toBeInstanceOf(CommanderError);
     expect((err as CommanderError).message).toContain('Unknown hook action');
+    expect((err as CommanderError).message).toContain('uninstall');
   });
 
   it('passes the hook flag through to resolved options', async () => {

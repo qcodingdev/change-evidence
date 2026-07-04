@@ -66,7 +66,9 @@ ce --base main
 | `ce --no-color` | Disable terminal colors |
 | `ce install-hook` | Install the optional pre-commit hook |
 | `ce install-hook --force` | Replace an existing non-managed pre-commit hook |
+| `ce uninstall-hook` | Remove the managed pre-commit hook from the current repository |
 | `ce hook install` | Alias for `ce install-hook` |
+| `ce hook uninstall` | Alias for `ce uninstall-hook` |
 
 ## Example Output
 
@@ -190,6 +192,20 @@ Hook modes:
 | `block` | Block only when a high-risk trigger matches |
 
 Trigger rules use both changed-file count and overall risk level. Existing pre-commit hooks not created by Change Evidence are preserved unless you pass `--force`.
+
+Remove the hook from the current repository:
+
+```bash
+ce uninstall-hook
+```
+
+Uninstall is safe by default: it only removes hooks written by Change Evidence and preserves custom hooks.
+
+To uninstall the global CLI package:
+
+```bash
+npm uninstall -g change-evidence
+```
 
 ## Privacy
 

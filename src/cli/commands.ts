@@ -13,7 +13,7 @@ import { loadConfig, resolveLanguage } from '../config/config-loader.js';
 import { getDiff } from '../git/diff-source.js';
 import { analyse } from '../analysis/risk-engine.js';
 import { renderReport } from '../render/terminal-report.js';
-import { installHook } from '../hook/install-hook.js';
+import { installHook, uninstallHook } from '../hook/install-hook.js';
 import { runHook } from '../hook/hook-runner.js';
 
 export type RunAnalysis = (options: ResolvedOptions) => Promise<void> | void;
@@ -22,6 +22,10 @@ export type InstallHook = (options: {
   config: ChangeEvidenceConfig;
   interactive: boolean;
   force?: boolean;
+}) => Promise<void> | void;
+
+export type UninstallHook = (options: {
+  config: ChangeEvidenceConfig;
 }) => Promise<void> | void;
 
 /**
@@ -152,9 +156,33 @@ async function defaultInstallHook(options: {
   }
 }
 
+async function defaultUninstallHook(options: {
+  config: ChangeEvidenceConfig;
+  cwd?: string;
+}): Promise<void> {
+  const repoRoot = await resolveGitRoot(options.cwd);
+  const result = uninstallHook(repoRoot);
+
+  if (result.removed) {
+    process.stdout.write(`Removed pre-commit hook at ${result.hookPath}\n`);
+    if (result.configPath) {
+      process.stdout.write(`Updated change-evidence config at ${result.configPath}\n`);
+    }
+    return;
+  }
+
+  if (result.preserved) {
+    process.stderr.write(`change-evidence: ${result.reason ?? 'hook not removed'}\n`);
+    process.exit(1);
+  }
+
+  process.stdout.write(`No hook removed: ${result.reason ?? 'not installed'}\n`);
+}
+
 export interface CreateProgramDeps {
   runAnalysis?: RunAnalysis;
   installHook?: InstallHook;
+  uninstallHook?: UninstallHook;
   cwd?: string;
   stdout?: NodeJS.WritableStream;
 }
@@ -199,6 +227,7 @@ export function createProgram(deps: CreateProgramDeps = {}): Command {
   const {
     runAnalysis,
     installHook: installHookHandler,
+    uninstallHook: uninstallHookHandler,
     cwd,
     stdout = process.stdout,
   } = deps;
@@ -207,6 +236,8 @@ export function createProgram(deps: CreateProgramDeps = {}): Command {
   const analysis: RunAnalysis = runAnalysis ?? ((options) => defaultRunAnalysis(options, cwd));
   const doInstall: InstallHook =
     installHookHandler ?? ((options) => defaultInstallHook({ ...options, cwd }));
+  const doUninstall: UninstallHook =
+    uninstallHookHandler ?? ((options) => defaultUninstallHook({ ...options, cwd }));
 
   const program = new Command();
 
@@ -227,19 +258,23 @@ export function createProgram(deps: CreateProgramDeps = {}): Command {
 
   program
     .command('hook <action>')
-    .description('manage git hooks; action: install')
+    .description('manage git hooks; action: install | uninstall')
     .allowExcessArguments(false)
     .option('--force', 'overwrite an existing non-managed pre-commit hook')
     .action(async (action: string, commandOptions: { force?: boolean }) => {
-      if (action !== 'install') {
+      if (action !== 'install' && action !== 'uninstall') {
         throw new CommanderError(
           1,
           'change-evidence.hook.unknownAction',
-          `Unknown hook action: ${action}. Supported action: install.`,
+          `Unknown hook action: ${action}. Supported actions: install, uninstall.`,
         );
       }
       const config = loadConfig(cwd).config;
-      await doInstall({ config, interactive: true, force: commandOptions.force === true });
+      if (action === 'install') {
+        await doInstall({ config, interactive: true, force: commandOptions.force === true });
+      } else {
+        await doUninstall({ config });
+      }
     });
 
   program
@@ -250,6 +285,15 @@ export function createProgram(deps: CreateProgramDeps = {}): Command {
     .action(async (commandOptions: { force?: boolean }) => {
       const config = loadConfig(cwd).config;
       await doInstall({ config, interactive: true, force: commandOptions.force === true });
+    });
+
+  program
+    .command('uninstall-hook')
+    .description('remove the managed pre-commit hook')
+    .allowExcessArguments(false)
+    .action(async () => {
+      const config = loadConfig(cwd).config;
+      await doUninstall({ config });
     });
 
   program.exitOverride();

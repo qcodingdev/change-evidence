@@ -10,6 +10,9 @@ Enable the optional pre-commit hook per repository:
   cd /path/to/your/project
   ce install-hook
 
+Remove the hook from a repository:
+  ce uninstall-hook
+
 After the hook is installed, git commit and IDE commits that run git hooks will trigger Change Evidence automatically.
 `;
 

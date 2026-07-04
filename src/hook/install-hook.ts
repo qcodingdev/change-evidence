@@ -1,4 +1,4 @@
-import { existsSync, readFileSync, writeFileSync, mkdirSync, chmodSync, statSync } from 'node:fs';
+import { existsSync, readFileSync, writeFileSync, mkdirSync, chmodSync, statSync, unlinkSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { parseDocument } from 'yaml';
 import type { ChangeEvidenceConfig, HookMode, Language, RiskLevel } from '../shared/types.js';
@@ -59,6 +59,17 @@ export interface InstallResult {
   /** Config file written during install, when install choices are persisted. */
   configPath?: string;
   /** true when an existing non-managed hook was preserved (not overwritten). */
+  preserved?: boolean;
+  reason?: string;
+}
+
+/** Result of a hook uninstall attempt. */
+export interface UninstallResult {
+  removed: boolean;
+  hookPath: string;
+  /** Config file updated during uninstall, when present. */
+  configPath?: string;
+  /** true when an existing non-managed hook was preserved. */
   preserved?: boolean;
   reason?: string;
 }
@@ -176,6 +187,71 @@ export function writeInstallConfig(
 
   writeFileSync(configPath, String(doc), 'utf8');
   return configPath;
+}
+
+function setHookEnabledInConfig(repoRoot: string, enabled: boolean): string | undefined {
+  const configPath = join(repoRoot, CONFIG_PATH);
+  if (!existsSync(configPath)) return undefined;
+
+  let raw: string;
+  try {
+    raw = readFileSync(configPath, 'utf8');
+  } catch {
+    return undefined;
+  }
+
+  let doc = parseDocument(raw);
+  if (doc.errors.length > 0 || doc.contents == null) {
+    doc = parseDocument('{}\n');
+  }
+
+  if (!doc.has('hook')) {
+    doc.set('hook', {});
+  }
+  doc.setIn(['hook', 'enabled'], enabled);
+
+  writeFileSync(configPath, String(doc), 'utf8');
+  return configPath;
+}
+
+/**
+ * Remove a pre-commit hook previously written by Change Evidence. Existing
+ * non-managed hooks are preserved so uninstall is safe by default.
+ */
+export function uninstallHook(repoRoot: string): UninstallResult {
+  const hookPath = resolveHookPath(repoRoot);
+  if (!hookPath) {
+    return {
+      removed: false,
+      hookPath: join(repoRoot, HOOK_PATH),
+      reason: 'not a git repository (no .git directory)',
+    };
+  }
+
+  if (!existsSync(hookPath)) {
+    return {
+      removed: false,
+      hookPath,
+      reason: 'pre-commit hook is not installed',
+    };
+  }
+
+  const existing = readFileSync(hookPath, 'utf8');
+  if (!existing.includes(HOOK_MARKER)) {
+    return {
+      removed: false,
+      hookPath,
+      preserved: true,
+      reason: 'existing pre-commit hook not written by change-evidence; preserved',
+    };
+  }
+
+  unlinkSync(hookPath);
+  return {
+    removed: true,
+    hookPath,
+    configPath: setHookEnabledInConfig(repoRoot, false),
+  };
 }
 
 /** Injection seam for the interactive prompts. */

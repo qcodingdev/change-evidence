@@ -7,6 +7,7 @@ import {
   CONFIG_PATH,
   resolveHookPath,
   writeHook,
+  uninstallHook,
   installHook,
   defaultAnswers,
   writeInstallConfig,
@@ -191,6 +192,59 @@ describe('writeInstallConfig', () => {
     const content = readFileSync(join(repo, CONFIG_PATH), 'utf8');
     expect(content).toContain('highPaths');
     expect(content).toContain('**/billing/**');
+    expect(content).toContain('mode: prompt');
+  });
+});
+
+describe('uninstallHook', () => {
+  it('removes a hook written by change-evidence', () => {
+    const repo = makeRepo();
+    writeHook(repo, 'ce');
+
+    const result = uninstallHook(repo);
+
+    expect(result.removed).toBe(true);
+    expect(existsSync(join(repo, HOOK_PATH))).toBe(false);
+  });
+
+  it('preserves an existing non-managed hook', () => {
+    const repo = makeRepo();
+    const hookPath = join(repo, HOOK_PATH);
+    writeFileSync(hookPath, '#!/bin/sh\necho custom\n', { mode: 0o755 });
+
+    const result = uninstallHook(repo);
+
+    expect(result.removed).toBe(false);
+    expect(result.preserved).toBe(true);
+    expect(readFileSync(hookPath, 'utf8')).toContain('echo custom');
+  });
+
+  it('returns removed=false when no hook exists', () => {
+    const repo = makeRepo();
+    const result = uninstallHook(repo);
+    expect(result.removed).toBe(false);
+    expect(result.reason).toContain('not installed');
+  });
+
+  it('disables hook.enabled in existing config after removal', () => {
+    const repo = makeRepo();
+    writeHook(repo, 'ce');
+    writeInstallConfig(repo, {
+      install: true,
+      language: 'zh-CN',
+      mode: 'prompt',
+      trigger: {
+        minChangedFiles: 10,
+        minRiskLevel: 'medium',
+      },
+    });
+
+    const result = uninstallHook(repo);
+    const content = readFileSync(join(repo, CONFIG_PATH), 'utf8');
+
+    expect(result.removed).toBe(true);
+    expect(result.configPath).toBe(join(repo, CONFIG_PATH));
+    expect(content).toContain('enabled: false');
     expect(content).toContain('mode: prompt');
   });
 });

@@ -66,7 +66,9 @@ ce --base main
 | `ce --no-color` | 关闭终端颜色 |
 | `ce install-hook` | 安装可选 pre-commit hook |
 | `ce install-hook --force` | 覆盖已有的非本工具管理的 pre-commit hook |
+| `ce uninstall-hook` | 从当前仓库移除本工具管理的 pre-commit hook |
 | `ce hook install` | `ce install-hook` 的别名 |
+| `ce hook uninstall` | `ce uninstall-hook` 的别名 |
 
 ## 输出示例
 
@@ -190,6 +192,20 @@ Hook 模式：
 | `block` | 仅在高风险触发规则命中时阻止提交 |
 
 触发规则同时使用变更文件数和总体风险等级。已有的非 Change Evidence 管理的 pre-commit hook 会被保留，除非传入 `--force`。
+
+从当前仓库卸载 hook：
+
+```bash
+ce uninstall-hook
+```
+
+卸载默认是安全的：只会删除 Change Evidence 自己写入的 hook，不会删除用户自定义 hook。
+
+卸载全局 CLI 包：
+
+```bash
+npm uninstall -g change-evidence
+```
 
 ## 隐私
 
