@@ -3,6 +3,7 @@ set -eu
 
 PACKAGE_NAME="${CHANGE_EVIDENCE_PACKAGE:-change-evidence}"
 PACKAGE_VERSION="${CHANGE_EVIDENCE_VERSION:-latest}"
+GIT_INSTALL_SPEC="${CHANGE_EVIDENCE_GIT:-git+https://github.com/qcodingdev/change-evidence.git}"
 MIN_NODE_MAJOR=20
 
 say() {
@@ -47,7 +48,12 @@ fi
 INSTALL_SPEC="${PACKAGE_NAME}@${PACKAGE_VERSION}"
 
 say "Installing ${INSTALL_SPEC} globally with npm..."
-npm install -g "$INSTALL_SPEC"
+if ! npm install -g "$INSTALL_SPEC"; then
+  say "npm package ${INSTALL_SPEC} is not available yet."
+  say "Installing from GitHub instead: ${GIT_INSTALL_SPEC}"
+  need_cmd git
+  npm install -g "$GIT_INSTALL_SPEC"
+fi
 
 if command -v ce >/dev/null 2>&1; then
   CE_BIN="ce"
