@@ -26,7 +26,7 @@ Or use the one-line installer:
 curl -fsSL https://raw.githubusercontent.com/qcodingdev/change-evidence/main/install.sh | sh
 ```
 
-The installer uses npm to install the CLI globally. If you run it inside a git repository, it starts the optional hook setup flow: choose the output language first, then decide whether to install the hook, then choose mode and trigger thresholds. Hook installation is never silent or forced.
+The installer uses npm to install the CLI globally. If you run it inside a git repository, it starts the optional hook setup flow: choose the output language first, then decide whether to install the hook, then choose mode and trigger thresholds. If you run it outside a git repository, only the global CLI is installed; run `ce install-hook` later inside a project to configure language and automatic pre-commit checks. Hook installation is never silent or forced.
 
 For local testing from a cloned repository:
 

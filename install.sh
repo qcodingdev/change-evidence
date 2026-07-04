@@ -75,5 +75,8 @@ if command -v git >/dev/null 2>&1 && git rev-parse --is-inside-work-tree >/dev/n
     "$CE_BIN" install-hook
   fi
 else
-  say "Run 'ce install-hook' inside a git repo to enable the optional pre-commit hook."
+  say "Current directory is not a git repository, so hook setup was not started."
+  say "To choose language and enable automatic pre-commit checks, run:"
+  say "  cd /path/to/your/git-project"
+  say "  ce install-hook"
 fi
