@@ -4,13 +4,31 @@ English | [简体中文](README.zh-CN.md)
 
 [![CI](https://github.com/qcodingdev/change-evidence/actions/workflows/ci.yml/badge.svg)](https://github.com/qcodingdev/change-evidence/actions/workflows/ci.yml)
 
-Pre-commit risk summaries for AI-assisted code changes.
+<p align="center">
+  <b>Spot code risks in 3 seconds before you commit</b><br>
+  Pre-commit risk summaries for AI-assisted code changes
+</p>
 
 ![Change Evidence terminal demo](assets/change-evidence-demo.gif)
 
 Change Evidence is a local, CLI-first tool that summarizes risky parts of your uncommitted code changes before you commit. It is designed for the moment after AI coding tools modify many files and you want a short, deterministic report: what changed, where the risk signals are, and what to check before committing.
 
 It is not an AI code reviewer. It does not judge code correctness, fix code, revert changes, approve commits, open pull requests, or upload your code. It only reads local git diffs and prints a concise terminal report.
+
+## Why Change Evidence?
+You just used Cursor / Claude Code / Copilot to generate 20 files. You're about to git commit — but did any secrets slip in? Are tests missing? Did production config change?
+
+Change Evidence prints a concise risk report before every commit, helping you catch:
+
+🔑 Secrets — tokens, passwords, API keys accidentally committed
+
+🧪 Missing tests — production code changed without test coverage
+
+📦 Config drift — dependency or infrastructure changes unchecked
+
+🚨 High-risk paths — unexpected changes to auth, payment, or database code
+
+Not an AI reviewer. No network calls. No code upload. — It only reads local git diff and prints a terminal report.
 
 ## Install
 
