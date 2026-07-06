@@ -18,12 +18,17 @@ Change Evidence 是一个本地优先、CLI-first 的提交前风险摘要工具
 
 它不判断代码正确性，不联网，不修代码，不回滚，不批准提交，不创建 PR，也不会上传你的代码。它只读取本地 git diff，并输出克制的风险摘要。
 
-为什么需要 Change Evidence？
+## 为什么需要 Change Evidence？
 你用 Cursor / Claude Code / Copilot 生成了 20 个文件，准备 git commit —— 但有没有混入敏感密钥？测试补了吗？生产配置改了吗？
+
 Change Evidence 在每次提交前打印一份精简的风险报告，帮你避免：
+
 🔑 密钥泄露 —— 误提交 token、密码、API key
+
 🧪 测试缺失 —— 改了生产代码却忘了写测试
+
 📦 配置漂移 —— 依赖或基础设施变更未检查
+
 🚨 高风险路径 —— auth、payment、database 等核心区域被意外改动
 
 
