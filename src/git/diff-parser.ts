@@ -95,6 +95,10 @@ const DEFAULT_SENSITIVE_PATTERNS: RegExp[] = [
   /\b(token|secret|password|private_key|api_key|access_key|authorization)\s*[=:]\s*.+/gi,
 ];
 
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
 /**
  * Redact secret-looking values from a unified-diff patch string.
  *
@@ -142,7 +146,7 @@ export function parseUnifiedDiff(raw: string, sensitiveKeywords?: string[]): Map
   const patterns = sensitiveKeywords?.length
     ? [
         new RegExp(
-          `\\b(${sensitiveKeywords.join('|')})\\s*[=:]\\s*.+`,
+          `\\b(${sensitiveKeywords.map(escapeRegExp).join('|')})\\s*[=:]\\s*.+`,
           'gi',
         ),
       ]

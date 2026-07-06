@@ -59,4 +59,14 @@ describe('detectSensitiveSignals', () => {
     const result = detectSensitiveSignals([file], KEYWORDS);
     expect(result.hitsByFile.get('src/c.ts')).toEqual(['token']);
   });
+
+  it('treats custom keywords as literals, not regex syntax', () => {
+    const file = makeFile(
+      'src/config.ts',
+      '+  api.key = "abc"\n+  apiXkey = "should-not-match"',
+    );
+    const result = detectSensitiveSignals([file], ['api.key']);
+
+    expect(result.hitsByFile.get('src/config.ts')).toEqual(['api.key']);
+  });
 });

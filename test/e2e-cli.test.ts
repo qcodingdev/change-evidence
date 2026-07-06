@@ -78,6 +78,15 @@ describeOrSkip('CLI end-to-end (built binary)', () => {
     expect(stdout).toContain('change-evidence');
   }, 15000);
 
+  it('ce --version exits 0 and prints the package version', async () => {
+    const { exitCode, stdout } = await execa('node', [CLI, '--version'], {
+      cwd: REPO_ROOT,
+      reject: false,
+    });
+    expect(exitCode).toBe(0);
+    expect(stdout.trim()).toBe('0.1.0');
+  }, 15000);
+
   it('ce foo (unknown positional) exits non-zero', async () => {
     const { exitCode } = await execa('node', [CLI, 'foo'], {
       cwd: REPO_ROOT,

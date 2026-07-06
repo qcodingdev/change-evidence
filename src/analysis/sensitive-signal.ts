@@ -1,5 +1,9 @@
 import type { FileChange, Signal } from '../shared/types.js';
 
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
 export interface SensitiveSignalResult {
   signals: Signal[];
   /** Map of file path → list of keyword hits. */
@@ -29,7 +33,7 @@ export function detectSensitiveSignals(
 
   // Build a single regex: \b(keyword1|keyword2|...)\b
   const pattern = new RegExp(
-    `\\b(${sensitiveKeywords.join('|')})\\b`,
+    `\\b(${sensitiveKeywords.map(escapeRegExp).join('|')})\\b`,
     'gi',
   );
 

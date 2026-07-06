@@ -157,6 +157,13 @@ describe('createProgram CLI routing', () => {
   it('rejects misspelled flags like --statged', async () => {
     await expect(runProgram(['--statged'])).rejects.toThrow(CommanderError);
   });
+
+  it('supports --version', async () => {
+    const err = await runProgram(['--version']).catch((e) => e);
+    expect(err).toBeInstanceOf(CommanderError);
+    expect((err as CommanderError).code).toBe('commander.version');
+    expect((err as CommanderError).exitCode).toBe(0);
+  });
 });
 
 describe('handleCommanderError', () => {

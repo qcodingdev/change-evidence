@@ -6,6 +6,8 @@ English | [简体中文](README.zh-CN.md)
 
 Pre-commit risk summaries for AI-assisted code changes.
 
+![Change Evidence terminal demo](assets/change-evidence-demo.gif)
+
 Change Evidence is a local, CLI-first tool that summarizes risky parts of your uncommitted code changes before you commit. It is designed for the moment after AI coding tools modify many files and you want a short, deterministic report: what changed, where the risk signals are, and what to check before committing.
 
 It is not an AI code reviewer. It does not judge code correctness, fix code, revert changes, approve commits, open pull requests, or upload your code. It only reads local git diffs and prints a concise terminal report.

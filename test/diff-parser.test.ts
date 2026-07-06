@@ -158,6 +158,20 @@ describe('parseUnifiedDiff', () => {
     expect(patch).not.toContain('my_custom_value');
   });
 
+  it('treats custom sensitive keywords as literals, not regex syntax', () => {
+    const diff = `diff --git a/cfg.yml b/cfg.yml
+--- a/cfg.yml
++++ b/cfg.yml
+@@ -1,0 +1,2 @@
++  api.key: my_custom_value
++  apiXkey: should_remain`;
+    const result = parseUnifiedDiff(diff, ['api.key']);
+    const patch = result.get('cfg.yml') ?? '';
+    expect(patch).toContain('api.key: ***REDACTED***');
+    expect(patch).not.toContain('my_custom_value');
+    expect(patch).toContain('apiXkey: should_remain');
+  });
+
   it('skips binary file markers', () => {
     const diff = `diff --git a/img.png b/img.png
 Binary files /dev/null and b/img.png differ

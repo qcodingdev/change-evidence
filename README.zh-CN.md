@@ -6,6 +6,8 @@
 
 AI coding 后，在 commit 前快速看清本地代码改动风险。
 
+![Change Evidence 终端演示](assets/change-evidence-demo.gif)
+
 Change Evidence 是一个本地优先、CLI-first 的提交前风险摘要工具。它适合在 AI coding 工具一次修改大量文件后使用：你可以在提交前看到精简的终端报告，了解改了哪些区域、命中了哪些风险信号、提交前还需要检查什么。
 
 它不是 AI Code Reviewer。它不判断代码正确性，不修代码，不回滚，不批准提交，不创建 PR，也不会上传你的代码。它只读取本地 git diff，并输出克制的风险摘要。

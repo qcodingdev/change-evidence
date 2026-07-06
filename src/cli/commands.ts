@@ -16,6 +16,8 @@ import { renderReport } from '../render/terminal-report.js';
 import { installHook, uninstallHook } from '../hook/install-hook.js';
 import { runHook } from '../hook/hook-runner.js';
 
+export const VERSION = '0.1.0';
+
 export type RunAnalysis = (options: ResolvedOptions) => Promise<void> | void;
 
 export type InstallHook = (options: {
@@ -244,6 +246,7 @@ export function createProgram(deps: CreateProgramDeps = {}): Command {
   program
     .name('change-evidence')
     .description('Pre-commit risk summaries for AI-assisted code changes.')
+    .version(VERSION)
     .allowExcessArguments(false)
     .option('--staged', 'analyse staged changes (git diff --cached)')
     .option('--base <ref>', 'analyse branch diff against <ref> (e.g. main)')
