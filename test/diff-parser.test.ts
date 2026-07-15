@@ -159,7 +159,7 @@ describe('parseUnifiedDiff', () => {
   });
 
   it('parses CRLF unified diff output on Windows', () => {
-    const crlfDiff = fixture('unified-diff.txt').replace(/\n/g, '\r\n');
+    const crlfDiff = fixture('unified-diff.txt').replace(/\r?\n/g, '\r\n');
     const result = parseUnifiedDiff(crlfDiff);
     expect(result.size).toBe(4);
     expect(
