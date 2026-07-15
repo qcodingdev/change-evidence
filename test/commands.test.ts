@@ -18,6 +18,8 @@ async function runProgram(
     force?: boolean;
   }>;
   uninstallCalls: ChangeEvidenceConfig[];
+  updateCalls: ChangeEvidenceConfig[];
+  packageUninstallCalls: Array<{ config: ChangeEvidenceConfig; yes: boolean }>;
   stdout: string[];
 }> {
   const analysisCalls: ResolvedOptions[] = [];
@@ -27,6 +29,11 @@ async function runProgram(
     force?: boolean;
   }> = [];
   const uninstallCalls: ChangeEvidenceConfig[] = [];
+  const updateCalls: ChangeEvidenceConfig[] = [];
+  const packageUninstallCalls: Array<{
+    config: ChangeEvidenceConfig;
+    yes: boolean;
+  }> = [];
   const stdout: string[] = [];
 
   const program = createProgram({
@@ -40,6 +47,12 @@ async function runProgram(
     uninstallHook: async (options) => {
       uninstallCalls.push(options.config);
     },
+    updateCli: async (options) => {
+      updateCalls.push(options.config);
+    },
+    uninstallCli: async (options) => {
+      packageUninstallCalls.push(options);
+    },
     stdout: {
       write: (s: string) => {
         stdout.push(s);
@@ -49,7 +62,14 @@ async function runProgram(
   });
 
   await program.parseAsync(['node', 'ce', ...argv]);
-  return { analysisCalls, hookCalls, uninstallCalls, stdout };
+  return {
+    analysisCalls,
+    hookCalls,
+    uninstallCalls,
+    updateCalls,
+    packageUninstallCalls,
+    stdout,
+  };
 }
 
 describe('createProgram CLI routing', () => {
@@ -126,6 +146,24 @@ describe('createProgram CLI routing', () => {
     ]);
     expect(uninstallCalls).toHaveLength(1);
     expect(analysisCalls).toHaveLength(0);
+  });
+
+  it('routes `ce update` to the global update handler', async () => {
+    const { analysisCalls, updateCalls } = await runProgram(['update']);
+    expect(updateCalls).toHaveLength(1);
+    expect(analysisCalls).toHaveLength(0);
+  });
+
+  it('routes `ce uninstall` to the global uninstall handler', async () => {
+    const { analysisCalls, packageUninstallCalls } = await runProgram(['uninstall']);
+    expect(packageUninstallCalls).toHaveLength(1);
+    expect(packageUninstallCalls[0].yes).toBe(false);
+    expect(analysisCalls).toHaveLength(0);
+  });
+
+  it('passes --yes through global uninstall', async () => {
+    const { packageUninstallCalls } = await runProgram(['uninstall', '--yes']);
+    expect(packageUninstallCalls[0].yes).toBe(true);
   });
 
   it('passes --force through install-hook', async () => {

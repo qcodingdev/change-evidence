@@ -15,6 +15,8 @@ import { analyse } from '../analysis/risk-engine.js';
 import { renderReport } from '../render/terminal-report.js';
 import { installHook, uninstallHook } from '../hook/install-hook.js';
 import { runHook } from '../hook/hook-runner.js';
+import { t } from '../render/i18n.js';
+import { uninstallGlobalCli, updateGlobalCli } from './package-manager.js';
 import { askHookYesNo } from './terminal-prompt.js';
 
 export const VERSION = '0.1.1';
@@ -29,6 +31,15 @@ export type InstallHook = (options: {
 
 export type UninstallHook = (options: {
   config: ChangeEvidenceConfig;
+}) => Promise<void> | void;
+
+export type UpdateCli = (options: {
+  config: ChangeEvidenceConfig;
+}) => Promise<void> | void;
+
+export type UninstallCli = (options: {
+  config: ChangeEvidenceConfig;
+  yes: boolean;
 }) => Promise<void> | void;
 
 /**
@@ -179,10 +190,55 @@ async function defaultUninstallHook(options: {
   process.stdout.write(`No hook removed: ${result.reason ?? 'not installed'}\n`);
 }
 
+async function confirmGlobalUninstall(language: Language): Promise<boolean> {
+  const rl = createRl();
+  if (!rl) {
+    throw new Error(t('package.uninstallNonInteractive', language));
+  }
+
+  try {
+    while (true) {
+      const answer = (await askLine(
+        rl,
+        t('package.uninstallConfirm', language),
+      )).toLowerCase();
+      if (answer === 'y' || answer === 'yes') return true;
+      if (answer === '' || answer === 'n' || answer === 'no') return false;
+      process.stderr.write(t('hook.answerYesNo', language) + '\n');
+    }
+  } finally {
+    rl.close();
+  }
+}
+
+async function defaultUpdateCli(options: {
+  config: ChangeEvidenceConfig;
+}): Promise<void> {
+  await updateGlobalCli(options.config.language);
+}
+
+async function defaultUninstallCli(options: {
+  config: ChangeEvidenceConfig;
+  cwd?: string;
+  yes: boolean;
+}): Promise<void> {
+  const language = options.config.language;
+  const confirmed = options.yes || await confirmGlobalUninstall(language);
+  if (!confirmed) {
+    process.stdout.write(t('package.uninstallCancelled', language) + '\n');
+    return;
+  }
+
+  const repoRoot = await resolveGitRoot(options.cwd);
+  await uninstallGlobalCli(repoRoot, language);
+}
+
 export interface CreateProgramDeps {
   runAnalysis?: RunAnalysis;
   installHook?: InstallHook;
   uninstallHook?: UninstallHook;
+  updateCli?: UpdateCli;
+  uninstallCli?: UninstallCli;
   cwd?: string;
   stdout?: NodeJS.WritableStream;
 }
@@ -228,6 +284,8 @@ export function createProgram(deps: CreateProgramDeps = {}): Command {
     runAnalysis,
     installHook: installHookHandler,
     uninstallHook: uninstallHookHandler,
+    updateCli: updateCliHandler,
+    uninstallCli: uninstallCliHandler,
     cwd,
     stdout = process.stdout,
   } = deps;
@@ -238,6 +296,10 @@ export function createProgram(deps: CreateProgramDeps = {}): Command {
     installHookHandler ?? ((options) => defaultInstallHook({ ...options, cwd }));
   const doUninstall: UninstallHook =
     uninstallHookHandler ?? ((options) => defaultUninstallHook({ ...options, cwd }));
+  const doUpdateCli: UpdateCli =
+    updateCliHandler ?? ((options) => defaultUpdateCli(options));
+  const doUninstallCli: UninstallCli =
+    uninstallCliHandler ?? ((options) => defaultUninstallCli({ ...options, cwd }));
 
   const program = new Command();
 
@@ -295,6 +357,25 @@ export function createProgram(deps: CreateProgramDeps = {}): Command {
     .action(async () => {
       const config = loadConfig(cwd).config;
       await doUninstall({ config });
+    });
+
+  program
+    .command('update')
+    .description('update the global CLI to the latest npm version')
+    .allowExcessArguments(false)
+    .action(async () => {
+      const config = loadConfig(cwd).config;
+      await doUpdateCli({ config });
+    });
+
+  program
+    .command('uninstall')
+    .description('remove the current managed hook and uninstall the global CLI')
+    .allowExcessArguments(false)
+    .option('-y, --yes', 'skip the uninstall confirmation')
+    .action(async (commandOptions: { yes?: boolean }) => {
+      const config = loadConfig(cwd).config;
+      await doUninstallCli({ config, yes: commandOptions.yes === true });
     });
 
   program.exitOverride();

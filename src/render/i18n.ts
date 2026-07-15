@@ -180,6 +180,56 @@ export const MESSAGES = {
     en: 'Commit blocked: high-risk change detected.',
   },
 
+  // Global package management
+  'package.updateStarting': {
+    'zh-CN': '正在通过 npm 更新 Change Evidence…',
+    en: 'Updating Change Evidence through npm…',
+  },
+  'package.updateComplete': {
+    'zh-CN': '更新完成。重新运行 ce --version 可查看当前版本。',
+    en: 'Update complete. Run ce --version again to see the installed version.',
+  },
+  'package.uninstallConfirm': {
+    'zh-CN': '将移除当前仓库的托管 Hook 并全局卸载 CLI；其他仓库的 Hook 不会自动移除。是否继续？[y/N] ',
+    en: 'This removes the current managed hook and uninstalls the global CLI; hooks in other repositories are not removed. Continue? [y/N] ',
+  },
+  'package.uninstallNonInteractive': {
+    'zh-CN': '非交互环境不会自动卸载；确认后请使用 ce uninstall --yes。',
+    en: 'Refusing to uninstall non-interactively; use ce uninstall --yes after confirming the impact.',
+  },
+  'package.uninstallCancelled': {
+    'zh-CN': '已取消卸载。',
+    en: 'Uninstall cancelled.',
+  },
+  'package.hookRemoved': {
+    'zh-CN': '已移除当前仓库的 pre-commit Hook：{path}',
+    en: 'Removed the current repository pre-commit hook: {path}',
+  },
+  'package.hookConfigUpdated': {
+    'zh-CN': '已更新配置：{path}',
+    en: 'Updated configuration: {path}',
+  },
+  'package.noManagedHook': {
+    'zh-CN': '当前目录未发现 Change Evidence 管理的 Hook。',
+    en: 'No Change Evidence managed hook was found in the current directory.',
+  },
+  'package.customHookPreserved': {
+    'zh-CN': '已保留非 Change Evidence 管理的 Hook：{path}',
+    en: 'Preserved a hook not managed by Change Evidence: {path}',
+  },
+  'package.otherHooksWarning': {
+    'zh-CN': '注意：其他仓库中的 Hook 不会自动移除；若卸载后提交失败，请重新安装 CLI，并在对应仓库运行 ce uninstall-hook。',
+    en: 'Note: hooks in other repositories are not removed. If commits fail afterward, reinstall the CLI and run ce uninstall-hook in those repositories.',
+  },
+  'package.uninstallStarting': {
+    'zh-CN': '正在通过 npm 全局卸载 Change Evidence…',
+    en: 'Uninstalling Change Evidence globally through npm…',
+  },
+  'package.uninstallComplete': {
+    'zh-CN': 'Change Evidence 已卸载。',
+    en: 'Change Evidence has been uninstalled.',
+  },
+
   // Punctuation: full-width colon for zh-CN, half-width for en.
   'punct.colon': { 'zh-CN': '：', en: ': ' },
   'punct.listJoin': { 'zh-CN': '；', en: '; ' },

@@ -27,6 +27,12 @@ describe('t', () => {
     expect(t('hook.noTerminal', 'zh-CN')).toContain('提交已中止');
   });
 
+  it('localizes package management messages', () => {
+    expect(t('package.updateStarting', 'zh-CN')).toContain('正在通过 npm 更新');
+    expect(t('package.uninstallConfirm', 'en')).toContain('uninstalls the global CLI');
+    expect(t('package.otherHooksWarning', 'zh-CN')).toContain('其他仓库');
+  });
+
   it('leaves unmatched placeholders in place', () => {
     expect(t('collapsed.summary', 'zh-CN', {})).toBe('{count} 个文档、注释或样式文件已折叠');
   });

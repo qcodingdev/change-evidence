@@ -28,7 +28,7 @@ Change Evidence prints a concise risk report before every commit, helping you ca
 
 🚨 High-risk paths — unexpected changes to auth, payment, or database code
 
-Not an AI reviewer. No network calls. No code upload. — It only reads local git diff and prints a terminal report.
+Not an AI reviewer. Risk analysis stays local. No code upload. — It only reads local git diff and prints a terminal report. The explicit `ce update` command uses npm to download updates.
 
 ## Install
 
@@ -91,6 +91,9 @@ ce --base main
 | `ce uninstall-hook` | Remove the managed pre-commit hook from the current repository |
 | `ce hook install` | Alias for `ce install-hook` |
 | `ce hook uninstall` | Alias for `ce uninstall-hook` |
+| `ce update` | Update the globally installed CLI through npm |
+| `ce uninstall` | Confirm, remove the current managed hook, and uninstall the global CLI |
+| `ce uninstall --yes` | Uninstall non-interactively after explicitly accepting the impact |
 
 ## Example Output
 
@@ -223,7 +226,34 @@ ce uninstall-hook
 
 Uninstall is safe by default: it only removes hooks written by Change Evidence and preserves custom hooks.
 
-To uninstall the global CLI package:
+## Update And Uninstall
+
+Update the globally installed CLI through npm:
+
+```bash
+ce update
+```
+
+Uninstall from the current repository and then remove the global CLI:
+
+```bash
+ce uninstall
+```
+
+The command asks for confirmation, removes only the current repository's Change Evidence managed hook, preserves custom hooks, and then runs the global npm uninstall. In a non-interactive environment, it refuses to uninstall unless the impact is explicitly accepted:
+
+```bash
+ce uninstall --yes
+```
+
+Change Evidence cannot safely discover every repository on your machine. If you installed hooks in multiple repositories, remove those hooks before the final global uninstall:
+
+```bash
+cd /path/to/another/repository
+ce uninstall-hook
+```
+
+The equivalent manual global command remains available:
 
 ```bash
 npm uninstall -g change-evidence
@@ -231,7 +261,7 @@ npm uninstall -g change-evidence
 
 ## Privacy
 
-Change Evidence runs locally. It shells out to `git diff`, analyzes the output in process, and prints a terminal report. It does not send code, diffs, or secrets to a remote service.
+Change Evidence risk analysis runs locally. It shells out to `git diff`, analyzes the output in process, and prints a terminal report. It does not send code, diffs, or secrets to a remote service. Only explicit package-management actions such as `ce update` invoke npm and may access the configured npm registry.
 
 ## Contributing
 

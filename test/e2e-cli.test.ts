@@ -124,6 +124,8 @@ describeOrSkip('CLI end-to-end (built binary)', () => {
     });
     expect(exitCode).toBe(0);
     expect(stdout).toContain('change-evidence');
+    expect(stdout).toContain('update');
+    expect(stdout).toContain('uninstall');
   }, 15000);
 
   it('ce --version exits 0 and prints the package version', async () => {
@@ -160,6 +162,23 @@ describeOrSkip('CLI end-to-end (built binary)', () => {
     );
     expect(exitCode).not.toBe(0);
     expect(stderr).toMatch(/unknown revision|bad revision|ambiguous argument/i);
+  }, 15000);
+
+  it('ce uninstall refuses non-interactive removal without --yes', async () => {
+    const tmpRepo = mkdtempSync(join(tmpdir(), 'ce-e2e-uninstall-confirm-'));
+    try {
+      await execa('git', ['init'], { cwd: tmpRepo });
+      const { exitCode, stderr } = await execa(
+        'node',
+        [CLI, 'uninstall'],
+        { cwd: tmpRepo, reject: false },
+      );
+      expect(exitCode).not.toBe(0);
+      expect(stderr).toContain('uninstall --yes');
+      expect(existsSync(join(tmpRepo, '.git', 'hooks', 'pre-commit'))).toBe(false);
+    } finally {
+      rmSync(tmpRepo, { recursive: true, force: true });
+    }
   }, 15000);
 
   it('ce --staged --no-color does not leak secret-looking values', async () => {

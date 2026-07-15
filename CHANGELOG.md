@@ -4,6 +4,13 @@ All notable changes to Change Evidence will be documented in this file.
 
 This project follows semantic versioning where practical.
 
+## Unreleased
+
+### Added
+
+- Add `ce update` for npm-managed global updates.
+- Add confirmed `ce uninstall` and non-interactive `ce uninstall --yes` flows that safely remove the current managed hook before uninstalling the global CLI.
+
 ## 0.1.1 - 2026-07-15
 
 ### Fixed
