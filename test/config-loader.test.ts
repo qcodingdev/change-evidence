@@ -6,6 +6,7 @@ import {
 import { createDefaultConfig } from '../src/config/defaults.js';
 import { mkdirSync, writeFileSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 const {
   applyRawConfig,
@@ -171,7 +172,7 @@ describe('applyRawConfig', () => {
 describe('loadConfig with file', () => {
   function withConfig(yaml: string, fn: (dir: string) => void) {
     const dir = join(
-      new URL('./fixtures', import.meta.url).pathname,
+      fileURLToPath(new URL('./fixtures', import.meta.url)),
       'tmp-cfg-' + Math.random().toString(36).slice(2),
     );
     mkdirSync(dir, { recursive: true });

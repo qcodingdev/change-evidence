@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'vitest';
+import { fileURLToPath } from 'node:url';
 import { CommanderError } from 'commander';
 import { createProgram, handleCommanderError } from '../src/cli/commands.js';
 import type { ChangeEvidenceConfig, ResolvedOptions } from '../src/shared/types.js';
@@ -29,7 +30,7 @@ async function runProgram(
   const stdout: string[] = [];
 
   const program = createProgram({
-    cwd: new URL('./fixtures', import.meta.url).pathname,
+    cwd: fileURLToPath(new URL('./fixtures', import.meta.url)),
     runAnalysis: async (o) => {
       analysisCalls.push(o);
     },

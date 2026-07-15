@@ -158,6 +158,15 @@ describe('parseUnifiedDiff', () => {
     expect(result.has('src/config/Config.java')).toBe(true);
   });
 
+  it('parses CRLF unified diff output on Windows', () => {
+    const crlfDiff = fixture('unified-diff.txt').replace(/\n/g, '\r\n');
+    const result = parseUnifiedDiff(crlfDiff);
+    expect(result.size).toBe(4);
+    expect(
+      result.get('src/main/java/com/example/auth/AuthService.java'),
+    ).toContain('api_key =');
+  });
+
   it('redacts secrets in parsed patches', () => {
     const result = parseUnifiedDiff(fixture('unified-diff.txt'));
     const authPatch = result.get('src/main/java/com/example/auth/AuthService.java') ?? '';

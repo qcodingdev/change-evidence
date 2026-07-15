@@ -249,7 +249,10 @@ export function parseUnifiedDiff(
     currentIsBinary = false;
   }
 
-  for (const line of raw.split('\n')) {
+  for (const rawLine of raw.split('\n')) {
+    // Git output follows the platform/checkout line endings in fixtures and
+    // can therefore contain CRLF on Windows.
+    const line = rawLine.endsWith('\r') ? rawLine.slice(0, -1) : rawLine;
     // New file boundary.
     if (line.startsWith('diff --git ')) {
       flush();

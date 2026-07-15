@@ -10,6 +10,7 @@ This project follows semantic versioning where practical.
 
 - Prevent prompt-mode hooks from silently allowing commits when confirmation is unavailable.
 - Preserve special file names and rename statistics by parsing NUL-delimited Git output.
+- Handle CRLF Git diff fixtures and file-URL paths correctly on Windows.
 - Localize hook confirmation, blocking, and terminal-error messages.
 - Respect linked worktrees and custom `core.hooksPath` locations when managing hooks.
 - Reject invalid branch base revisions instead of reporting an empty diff.
