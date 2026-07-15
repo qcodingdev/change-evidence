@@ -209,3 +209,23 @@ describe('renderReport — secret never leaked', () => {
     expect(out).not.toContain('sk-super-secret-12345');
   });
 });
+
+describe('renderReport — path safety', () => {
+  it('escapes control characters from Git file names', () => {
+    const unsafePath = 'src/auth/line\n\u001b[31m.ts';
+    const report = analyseFiles([makeFile('src/a.ts')]);
+    report.highRiskFiles = [{
+      path: unsafePath,
+      category: 'production',
+      severity: 'high',
+      reasons: ['high-risk-path'],
+    }];
+    const out = renderReport(report, {
+      scope: 'staged',
+      language: 'en',
+      noColor: true,
+    });
+    expect(out).toContain('line\\n\\u001b[31m.ts');
+    expect(out).not.toContain('\u001b[31m');
+  });
+});

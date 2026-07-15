@@ -21,6 +21,12 @@ describe('t', () => {
     ).toBe('5 documentation, comment, or style files collapsed');
   });
 
+  it('localizes hook interaction messages', () => {
+    expect(t('hook.confirm', 'zh-CN')).toContain('是否继续提交');
+    expect(t('hook.confirm', 'en')).toContain('Continue with commit');
+    expect(t('hook.noTerminal', 'zh-CN')).toContain('提交已中止');
+  });
+
   it('leaves unmatched placeholders in place', () => {
     expect(t('collapsed.summary', 'zh-CN', {})).toBe('{count} 个文档、注释或样式文件已折叠');
   });

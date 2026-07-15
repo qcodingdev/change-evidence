@@ -1,4 +1,8 @@
 import { describe, it, expect } from 'vitest';
+import { execFileSync } from 'node:child_process';
+import { mkdtempSync, renameSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import {
   getDiff,
   GitUnavailableError,
@@ -73,6 +77,9 @@ describe('getDiff', () => {
     for (const line of lines) {
       expect(line).toContain('--cached');
     }
+    expect(lines.filter((line) => line.includes('name-status'))[0]).toContain('-z');
+    expect(lines.filter((line) => line.includes('numstat'))[0]).toContain('-z');
+    expect(lines.filter((line) => line.includes('unified=0'))[0]).not.toContain('-z');
   });
 
   it('passes <base>...HEAD for branch scope', async () => {
@@ -127,4 +134,68 @@ describe('getDiff', () => {
       gitRunner: runner,
     })).rejects.toThrow(InvalidRevisionError);
   });
+
+  it.skipIf(process.platform === 'win32')(
+    'preserves tabs and newlines in real staged file paths',
+    async () => {
+      const repo = mkdtempSync(join(tmpdir(), 'ce-diff-special-path-'));
+      const oddPath = 'odd\tline\nname.ts';
+      try {
+        execFileSync('git', ['init'], { cwd: repo, stdio: 'ignore' });
+        writeFileSync(join(repo, oddPath), 'export const answer = 42;\n');
+        execFileSync('git', ['add', '--', oddPath], { cwd: repo });
+
+        const result = await getDiff('staged', { cwd: repo });
+        expect(result.files).toHaveLength(1);
+        expect(result.files[0].path).toBe(oddPath);
+        expect(result.files[0].additions).toBe(1);
+        expect(result.files[0].patch).toContain('export const answer = 42');
+      } finally {
+        rmSync(repo, { recursive: true, force: true });
+      }
+    },
+  );
+
+  it.skipIf(process.platform === 'win32')(
+    'associates real rename stats and patches with the destination path',
+    async () => {
+      const repo = mkdtempSync(join(tmpdir(), 'ce-diff-rename-'));
+      const oldPath = 'original.ts';
+      const newPath = 'renamed\tfile.ts';
+      const original = Array.from(
+        { length: 20 },
+        (_, i) => `export const v${i} = ${i};`,
+      ).join('\n');
+      try {
+        execFileSync('git', ['init'], { cwd: repo, stdio: 'ignore' });
+        writeFileSync(join(repo, oldPath), original + '\n');
+        execFileSync('git', ['add', oldPath], { cwd: repo });
+        execFileSync('git', [
+          '-c', 'user.email=ce@example.test',
+          '-c', 'user.name=Change Evidence',
+          'commit', '-m', 'initial',
+        ], { cwd: repo, stdio: 'ignore' });
+
+        renameSync(join(repo, oldPath), join(repo, newPath));
+        writeFileSync(
+          join(repo, newPath),
+          original.replace('v10 = 10', 'v10 = 100') + '\n',
+        );
+        execFileSync('git', ['add', '-A'], { cwd: repo });
+
+        const result = await getDiff('staged', { cwd: repo });
+        expect(result.files).toHaveLength(1);
+        expect(result.files[0]).toMatchObject({
+          path: newPath,
+          oldPath,
+          status: 'renamed',
+          additions: 1,
+          deletions: 1,
+        });
+        expect(result.files[0].patch).toContain('v10 = 100');
+      } finally {
+        rmSync(repo, { recursive: true, force: true });
+      }
+    },
+  );
 });

@@ -143,6 +143,23 @@ describe('runHook — prompt mode', () => {
     expect(result.blocked).toBe(false);
   });
 
+  it('localizes the confirmation prompt and abort message', async () => {
+    const config = makeConfig('prompt');
+    config.language = 'zh-CN';
+    const report = makeReport(20, 'high');
+    let question = '';
+    const messages: string[] = [];
+    await runHook(report, config, {
+      promptYesNo: async (value) => {
+        question = value;
+        return false;
+      },
+      write: (value) => messages.push(value),
+    });
+    expect(question).toContain('是否继续提交');
+    expect(messages).toContain('提交已中止。');
+  });
+
   it('prompts and blocks commit on no', async () => {
     const config = makeConfig('prompt');
     const report = makeReport(20, 'high');

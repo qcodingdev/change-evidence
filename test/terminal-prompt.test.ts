@@ -13,6 +13,7 @@ describe('askHookYesNo', () => {
     const session = sessionWithAnswers(answer);
     await expect(askHookYesNo('Continue? ', {
       createSession: () => session,
+      language: 'en',
     })).resolves.toBe(true);
     expect(session.close).toHaveBeenCalledOnce();
   });
@@ -21,6 +22,7 @@ describe('askHookYesNo', () => {
     const session = sessionWithAnswers(answer);
     await expect(askHookYesNo('Continue? ', {
       createSession: () => session,
+      language: 'en',
     })).resolves.toBe(false);
     expect(session.close).toHaveBeenCalledOnce();
   });
@@ -31,6 +33,7 @@ describe('askHookYesNo', () => {
     await expect(askHookYesNo('Continue? ', {
       createSession: () => session,
       writeError,
+      language: 'en',
     })).resolves.toBe(true);
     expect(session.question).toHaveBeenCalledTimes(2);
     expect(writeError).toHaveBeenCalledWith('Please answer y or n.\n');
@@ -41,6 +44,7 @@ describe('askHookYesNo', () => {
     await expect(askHookYesNo('Continue? ', {
       createSession: () => null,
       writeError,
+      language: 'en',
     })).resolves.toBe(false);
     expect(writeError).toHaveBeenCalledWith(
       expect.stringContaining('commit aborted'),
@@ -52,6 +56,7 @@ describe('askHookYesNo', () => {
     await expect(askHookYesNo('Continue? ', {
       createSession: () => { throw new Error('open failed'); },
       writeError,
+      language: 'en',
     })).resolves.toBe(false);
     expect(writeError).toHaveBeenCalledWith(
       expect.stringContaining('commit aborted'),
@@ -67,6 +72,7 @@ describe('askHookYesNo', () => {
     await expect(askHookYesNo('Continue? ', {
       createSession: () => session,
       writeError,
+      language: 'en',
     })).resolves.toBe(false);
     expect(session.close).toHaveBeenCalledOnce();
     expect(writeError).toHaveBeenCalledWith(
@@ -80,5 +86,17 @@ describe('askHookYesNo', () => {
     await expect(askHookYesNo('Continue? ', {
       createSession: () => session,
     })).resolves.toBe(true);
+  });
+
+  it('localizes prompt errors in Chinese', async () => {
+    const writeError = vi.fn();
+    await expect(askHookYesNo('继续？', {
+      createSession: () => null,
+      writeError,
+      language: 'zh-CN',
+    })).resolves.toBe(false);
+    expect(writeError).toHaveBeenCalledWith(
+      expect.stringContaining('没有可交互终端'),
+    );
   });
 });

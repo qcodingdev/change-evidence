@@ -47,19 +47,22 @@ export interface DiffSourceOptions {
  * `format` is one of: "name-status", "numstat", "unified=0".
  */
 function diffArgs(scope: DiffScope, base: string | undefined, format: string): string[] {
+  const nulTerminated = format === 'name-status' || format === 'numstat';
+  const formatArgs = [`--${format}`, ...(nulTerminated ? ['-z'] : [])];
+
   if (scope === 'staged') {
-    return ['diff', '--cached', `--${format}`];
+    return ['diff', '--cached', ...formatArgs];
   }
 
   if (scope === 'branch') {
     if (!base) {
       throw new Error('branch scope requires a base ref (--base)');
     }
-    return ['diff', `${base}...HEAD`, `--${format}`];
+    return ['diff', `${base}...HEAD`, ...formatArgs];
   }
 
   // working-tree
-  return ['diff', `--${format}`];
+  return ['diff', ...formatArgs];
 }
 
 /**

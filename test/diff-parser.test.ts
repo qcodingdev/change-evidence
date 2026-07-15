@@ -34,6 +34,23 @@ describe('parseNameStatus', () => {
     expect(result.get('new/path.ts')).toEqual({ status: 'renamed', oldPath: 'old/path.ts' });
   });
 
+  it('parses NUL-delimited paths without trimming special characters', () => {
+    const oddPath = 'src/odd\tname with space.ts';
+    const renamedPath = 'src/new\nname.ts';
+    const raw = `M\0${oddPath}\0R098\0src/old.ts\0${renamedPath}\0`;
+    const result = parseNameStatus(raw);
+    expect(result.get(oddPath)).toEqual({ status: 'modified' });
+    expect(result.get(renamedPath)).toEqual({
+      status: 'renamed',
+      oldPath: 'src/old.ts',
+    });
+  });
+
+  it('treats NUL-delimited copy records as added files', () => {
+    const result = parseNameStatus('C100\0src/original.ts\0src/copy.ts\0');
+    expect(result.get('src/copy.ts')).toEqual({ status: 'added' });
+  });
+
   it('skips empty lines', () => {
     const result = parseNameStatus('\n\nM\tfoo.ts\n\n');
     expect(result.size).toBe(1);
@@ -67,6 +84,16 @@ describe('parseNumstat', () => {
     const raw = '-\t-\timage.png\n';
     const result = parseNumstat(raw);
     expect(result.get('image.png')).toEqual({ additions: 0, deletions: 0 });
+  });
+
+  it('parses NUL-delimited normal and renamed paths', () => {
+    const oddPath = 'src/odd\tname.ts';
+    const renamedPath = 'src/new\nname.ts';
+    const raw = `3\t2\t${oddPath}\0` +
+      `4\t1\t\0src/old.ts\0${renamedPath}\0`;
+    const result = parseNumstat(raw);
+    expect(result.get(oddPath)).toEqual({ additions: 3, deletions: 2 });
+    expect(result.get(renamedPath)).toEqual({ additions: 4, deletions: 1 });
   });
 
   it('returns empty map for empty input', () => {
@@ -188,6 +215,17 @@ diff --git a/foo.ts b/foo.ts
   it('returns empty map for empty input', () => {
     expect(parseUnifiedDiff('').size).toBe(0);
   });
+
+  it('binds quoted diff sections to already parsed special paths', () => {
+    const oddPath = 'src/odd\tname.ts';
+    const diff = `diff --git "a/src/odd\\tname.ts" "b/src/odd\\tname.ts"
+--- "a/src/odd\\tname.ts"
++++ "b/src/odd\\tname.ts"
+@@ -1,0 +1,1 @@
++export const value = 1;`;
+    const result = parseUnifiedDiff(diff, undefined, [oddPath]);
+    expect(result.get(oddPath)).toContain('export const value = 1');
+  });
 });
 
 // ─── extractExtension ─────────────────────────────────────────
@@ -243,5 +281,27 @@ describe('buildFileChanges', () => {
   it('handles empty inputs gracefully', () => {
     const files = buildFileChanges('', '', '');
     expect(files).toHaveLength(0);
+  });
+
+  it('merges NUL-delimited rename stats by destination path', () => {
+    const files = buildFileChanges(
+      'R095\0src/old.ts\0src/new\tname.ts\0',
+      '4\t1\t\0src/old.ts\0src/new\tname.ts\0',
+      `diff --git "a/src/old.ts" "b/src/new\\tname.ts"
+--- "a/src/old.ts"
++++ "b/src/new\\tname.ts"
+@@ -1 +1 @@
+-old
++new`,
+    );
+    expect(files).toHaveLength(1);
+    expect(files[0]).toMatchObject({
+      path: 'src/new\tname.ts',
+      oldPath: 'src/old.ts',
+      status: 'renamed',
+      additions: 4,
+      deletions: 1,
+    });
+    expect(files[0].patch).toContain('+new');
   });
 });

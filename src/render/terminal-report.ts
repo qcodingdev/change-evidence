@@ -18,6 +18,11 @@ const SIGNAL_MESSAGE_KEYS = new Set<string>(
   Object.keys(MESSAGES).filter((k) => k.startsWith('signal.')),
 );
 
+/** Escape control characters and backslashes in untrusted Git path names. */
+function terminalSafePath(path: string): string {
+  return JSON.stringify(path).slice(1, -1);
+}
+
 /**
  * Render a RiskReport into a single string suitable for terminal output.
  *
@@ -74,7 +79,7 @@ export function renderReport(
       const reasons = hf.reasons
         .map((r) => t(`reason.${r}` as MessageKey, language))
         .join(join);
-      lines.push(`${tag} ${hf.path}`);
+      lines.push(`${tag} ${terminalSafePath(hf.path)}`);
       lines.push(`  ${c.dim(reasons)}`);
     }
     lines.push('');
@@ -146,7 +151,7 @@ function renderSignal(
   if (hasTemplate) {
     const params: Record<string, string | number> = {};
     if (sig.paths?.length) {
-      params.path = sig.paths[0];
+      params.path = terminalSafePath(sig.paths[0]);
     }
     // Secret-keyword: extract keyword list from engine message.
     if (sig.type === 'secret-keyword') {

@@ -78,7 +78,9 @@ async function defaultRunAnalysis(
 
   if (options.hookMode) {
     const result = await runHook(report, options.config, {
-      promptYesNo: askHookYesNo,
+      promptYesNo: (question) => askHookYesNo(question, {
+        language: options.language,
+      }),
       write: (m) => process.stdout.write(m + '\n'),
     });
     if (result.exitCode !== 0) {

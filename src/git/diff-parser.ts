@@ -7,6 +7,8 @@ import type { FileChange, FileStatus } from '../shared/types.js';
  * Format per line: `<status>\t<path>` or `<Rxxx>\t<old>\t<new>`.
  */
 export function parseNameStatus(raw: string): Map<string, { status: FileStatus; oldPath?: string }> {
+  if (raw.includes('\0')) return parseNulNameStatus(raw);
+
   const result = new Map<string, { status: FileStatus; oldPath?: string }>();
 
   for (const line of raw.split('\n')) {
@@ -39,6 +41,37 @@ export function parseNameStatus(raw: string): Map<string, { status: FileStatus; 
   return result;
 }
 
+/** Parse `git diff --name-status -z` without trimming or unquoting paths. */
+function parseNulNameStatus(
+  raw: string,
+): Map<string, { status: FileStatus; oldPath?: string }> {
+  const result = new Map<string, { status: FileStatus; oldPath?: string }>();
+  const tokens = raw.split('\0');
+
+  for (let i = 0; i < tokens.length;) {
+    const statusCode = tokens[i++];
+    if (!statusCode) continue;
+
+    if (statusCode.startsWith('R') || statusCode.startsWith('C')) {
+      const oldPath = tokens[i++];
+      const newPath = tokens[i++];
+      if (!oldPath || !newPath) continue;
+      if (statusCode.startsWith('R')) {
+        result.set(newPath, { status: 'renamed', oldPath });
+      } else {
+        result.set(newPath, { status: 'added' });
+      }
+      continue;
+    }
+
+    const path = tokens[i++];
+    const status = mapStatus(statusCode);
+    if (path && status) result.set(path, { status });
+  }
+
+  return result;
+}
+
 function mapStatus(code: string): FileStatus | undefined {
   switch (code) {
     case 'A':
@@ -63,6 +96,8 @@ function mapStatus(code: string): FileStatus | undefined {
  * Binary files show `-` for additions/deletions.
  */
 export function parseNumstat(raw: string): Map<string, { additions: number; deletions: number }> {
+  if (raw.includes('\0')) return parseNulNumstat(raw);
+
   const result = new Map<string, { additions: number; deletions: number }>();
 
   for (const line of raw.split('\n')) {
@@ -78,6 +113,53 @@ export function parseNumstat(raw: string): Map<string, { additions: number; dele
     result.set(path, {
       additions: parts[0] === '-' ? 0 : parseInt(parts[0], 10) || 0,
       deletions: parts[1] === '-' ? 0 : parseInt(parts[1], 10) || 0,
+    });
+  }
+
+  return result;
+}
+
+interface ParsedNumstatRecord {
+  additions: number;
+  deletions: number;
+  path: string;
+}
+
+function parseNumstatRecord(record: string): ParsedNumstatRecord | undefined {
+  const firstTab = record.indexOf('\t');
+  const secondTab = record.indexOf('\t', firstTab + 1);
+  if (firstTab === -1 || secondTab === -1) return undefined;
+
+  const additionsRaw = record.slice(0, firstTab);
+  const deletionsRaw = record.slice(firstTab + 1, secondTab);
+  return {
+    additions: additionsRaw === '-' ? 0 : parseInt(additionsRaw, 10) || 0,
+    deletions: deletionsRaw === '-' ? 0 : parseInt(deletionsRaw, 10) || 0,
+    path: record.slice(secondTab + 1),
+  };
+}
+
+/** Parse `git diff --numstat -z`, including its three-token rename form. */
+function parseNulNumstat(
+  raw: string,
+): Map<string, { additions: number; deletions: number }> {
+  const result = new Map<string, { additions: number; deletions: number }>();
+  const tokens = raw.split('\0');
+
+  for (let i = 0; i < tokens.length;) {
+    const record = parseNumstatRecord(tokens[i++]);
+    if (!record) continue;
+
+    let path = record.path;
+    if (path === '') {
+      i++; // old path; stats belong to the destination path
+      path = tokens[i++] ?? '';
+    }
+    if (!path) continue;
+
+    result.set(path, {
+      additions: record.additions,
+      deletions: record.deletions,
     });
   }
 
@@ -137,9 +219,15 @@ export function redactSecrets(patch: string, patterns: RegExp[] = DEFAULT_SENSIT
  *   diff --git a/<path> b/<path>
  * optionally followed by rename metadata, then hunks.
  */
-export function parseUnifiedDiff(raw: string, sensitiveKeywords?: string[]): Map<string, string> {
+export function parseUnifiedDiff(
+  raw: string,
+  sensitiveKeywords?: string[],
+  expectedPaths?: readonly string[],
+): Map<string, string> {
   const result = new Map<string, string>();
   let currentPath: string | null = null;
+  let currentIsBinary = false;
+  let pathIndex = 0;
   const chunks: string[] = [];
 
   // Build custom patterns if caller provides keywords.
@@ -153,17 +241,23 @@ export function parseUnifiedDiff(raw: string, sensitiveKeywords?: string[]): Map
     : undefined;
 
   function flush(): void {
-    if (currentPath && chunks.length > 0) {
+    if (currentPath && chunks.length > 0 && !currentIsBinary) {
       result.set(currentPath, redactSecrets(chunks.join('\n'), patterns));
     }
     chunks.length = 0;
     currentPath = null;
+    currentIsBinary = false;
   }
 
   for (const line of raw.split('\n')) {
     // New file boundary.
     if (line.startsWith('diff --git ')) {
       flush();
+      const expectedPath = expectedPaths?.[pathIndex++];
+      if (expectedPath !== undefined) {
+        currentPath = expectedPath;
+        continue;
+      }
       // Extract path from "diff --git a/<path> b/<path>"
       const match = line.match(/^diff --git a\/(.+?) b\/(.+)$/);
       if (match) {
@@ -174,7 +268,10 @@ export function parseUnifiedDiff(raw: string, sensitiveKeywords?: string[]): Map
     }
 
     // Skip binary file markers — no patch content to parse.
-    if (line.startsWith('Binary files')) continue;
+    if (line.startsWith('Binary files') || line === 'GIT binary patch') {
+      currentIsBinary = true;
+      continue;
+    }
 
     if (currentPath) {
       chunks.push(line);
@@ -213,7 +310,11 @@ export function buildFileChanges(
 ): FileChange[] {
   const statuses = parseNameStatus(nameStatusRaw);
   const stats = parseNumstat(numstatRaw);
-  const patches = parseUnifiedDiff(unifiedDiffRaw, sensitiveKeywords);
+  const patches = parseUnifiedDiff(
+    unifiedDiffRaw,
+    sensitiveKeywords,
+    [...statuses.keys()],
+  );
 
   const files: FileChange[] = [];
 

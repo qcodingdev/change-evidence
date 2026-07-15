@@ -1,4 +1,5 @@
 import type { ChangeEvidenceConfig, RiskLevel, RiskReport } from '../shared/types.js';
+import { t } from '../render/i18n.js';
 
 /**
  * Severity ranking used to compare trigger thresholds against the report.
@@ -91,12 +92,10 @@ export async function runHook(
     if (!triggered) {
       return { exitCode: 0, triggered: false, blocked: false, prompted: false };
     }
-    const proceed = await promptYesNo(
-      'Risk threshold met. Continue with commit? [y/N] ',
-    );
+    const proceed = await promptYesNo(t('hook.confirm', config.language));
     const blocked = !proceed;
     if (blocked) {
-      write('Commit aborted.');
+      write(t('hook.commitAborted', config.language));
     }
     return { exitCode: blocked ? 1 : 0, triggered: true, blocked, prompted: true };
   }
@@ -105,7 +104,7 @@ export async function runHook(
   if (mode === 'block') {
     const blocked = triggered && report.overallRisk === 'high';
     if (blocked) {
-      write('Commit blocked: high-risk change detected.');
+      write(t('hook.commitBlocked', config.language));
     }
     return { exitCode: blocked ? 1 : 0, triggered, blocked, prompted: false };
   }

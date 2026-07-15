@@ -150,6 +150,36 @@ export const MESSAGES = {
     en: 'No code changes detected; nothing to analyse.',
   },
 
+  // Hook interaction
+  'hook.confirm': {
+    'zh-CN': '已达到风险阈值，是否继续提交？[y/N] ',
+    en: 'Risk threshold met. Continue with commit? [y/N] ',
+  },
+  'hook.answerYesNo': {
+    'zh-CN': '请输入 y 或 n。',
+    en: 'Please answer y or n.',
+  },
+  'hook.noTerminal': {
+    'zh-CN': 'change-evidence：没有可交互终端，提交已中止。',
+    en: 'change-evidence: no interactive terminal is available; commit aborted.',
+  },
+  'hook.openFailed': {
+    'zh-CN': 'change-evidence：无法打开确认提示，提交已中止。',
+    en: 'change-evidence: unable to open confirmation prompt; commit aborted.',
+  },
+  'hook.readFailed': {
+    'zh-CN': 'change-evidence：无法读取确认结果，提交已中止。',
+    en: 'change-evidence: unable to read confirmation; commit aborted.',
+  },
+  'hook.commitAborted': {
+    'zh-CN': '提交已中止。',
+    en: 'Commit aborted.',
+  },
+  'hook.commitBlocked': {
+    'zh-CN': '提交已阻止：检测到高风险变更。',
+    en: 'Commit blocked: high-risk change detected.',
+  },
+
   // Punctuation: full-width colon for zh-CN, half-width for en.
   'punct.colon': { 'zh-CN': '：', en: ': ' },
   'punct.listJoin': { 'zh-CN': '；', en: '; ' },

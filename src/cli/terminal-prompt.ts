@@ -1,6 +1,8 @@
 import { closeSync, createReadStream, openSync } from 'node:fs';
 import * as readline from 'node:readline/promises';
 import { stdin, stdout } from 'node:process';
+import type { Language } from '../shared/types.js';
+import { t } from '../render/i18n.js';
 
 export interface PromptSession {
   question(prompt: string): Promise<string>;
@@ -10,6 +12,7 @@ export interface PromptSession {
 export interface AskYesNoOptions {
   createSession?: () => PromptSession | null;
   writeError?: (message: string) => void;
+  language?: Language;
 }
 
 /**
@@ -62,20 +65,17 @@ export async function askHookYesNo(
   const createSession = options.createSession ?? createHookPromptSession;
   const writeError = options.writeError ??
     ((message) => process.stderr.write(message));
+  const language = options.language ?? 'zh-CN';
   let session: PromptSession | null;
   try {
     session = createSession();
   } catch {
-    writeError(
-      'change-evidence: unable to open confirmation prompt; commit aborted.\n',
-    );
+    writeError(t('hook.openFailed', language) + '\n');
     return false;
   }
 
   if (!session) {
-    writeError(
-      'change-evidence: no interactive terminal is available; commit aborted.\n',
-    );
+    writeError(t('hook.noTerminal', language) + '\n');
     return false;
   }
 
@@ -84,10 +84,10 @@ export async function askHookYesNo(
       const answer = (await session.question(question)).trim().toLowerCase();
       if (answer === 'y' || answer === 'yes') return true;
       if (answer === '' || answer === 'n' || answer === 'no') return false;
-      writeError('Please answer y or n.\n');
+      writeError(t('hook.answerYesNo', language) + '\n');
     }
   } catch {
-    writeError('change-evidence: unable to read confirmation; commit aborted.\n');
+    writeError(t('hook.readFailed', language) + '\n');
     return false;
   } finally {
     try {
