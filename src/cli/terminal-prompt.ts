@@ -1,6 +1,7 @@
-import { closeSync, createReadStream, openSync } from 'node:fs';
+import { openSync } from 'node:fs';
 import * as readline from 'node:readline/promises';
 import { stdin, stdout } from 'node:process';
+import { ReadStream as TtyReadStream } from 'node:tty';
 import type { Language } from '../shared/types.js';
 import { t } from '../render/i18n.js';
 
@@ -33,8 +34,13 @@ export function createHookPromptSession(): PromptSession | null {
     return null;
   }
 
-  const input = createReadStream(terminalPath, { fd, autoClose: false });
-  const rl = readline.createInterface({ input, output: stdout });
+  // A filesystem ReadStream performs blocking terminal reads in libuv's
+  // thread pool, which can keep process.exit() waiting after the answer. A
+  // native TTY stream is non-blocking and owns the descriptor lifecycle.
+  const input = new TtyReadStream(fd);
+  // Git hooks may not be the terminal's foreground process group, so raw-mode
+  // setup can fail with EPERM. Line-oriented y/n input does not need raw mode.
+  const rl = readline.createInterface({ input, output: stdout, terminal: false });
   let closed = false;
 
   return {
@@ -44,11 +50,6 @@ export function createHookPromptSession(): PromptSession | null {
       closed = true;
       rl.close();
       input.destroy();
-      try {
-        closeSync(fd);
-      } catch {
-        // The prompt is complete; cleanup must not change its answer.
-      }
     },
   };
 }

@@ -9,6 +9,7 @@ This project follows semantic versioning where practical.
 ### Fixed
 
 - Prevent prompt-mode hooks from silently allowing commits when confirmation is unavailable.
+- Prevent controlling-terminal cleanup from failing an explicitly approved commit.
 - Preserve special file names and rename statistics by parsing NUL-delimited Git output.
 - Handle CRLF Git diff fixtures and file-URL paths correctly on Windows.
 - Localize hook confirmation, blocking, and terminal-error messages.
