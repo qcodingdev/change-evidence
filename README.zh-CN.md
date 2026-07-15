@@ -2,6 +2,12 @@
 
 [English](README.md) | 简体中文
 
+<h1 align="center">🔍 Change Evidence</h1>
+<p align="center">
+  <b>AI 编码后，提交前 3 秒看清代码风险</b><br>
+  AI 辅助代码变更的提交前风险摘要工具
+</p>
+
 [![CI](https://github.com/qcodingdev/change-evidence/actions/workflows/ci.yml/badge.svg)](https://github.com/qcodingdev/change-evidence/actions/workflows/ci.yml)
 
 AI coding 后，在 commit 前快速看清本地代码改动风险。
@@ -10,7 +16,21 @@ AI coding 后，在 commit 前快速看清本地代码改动风险。
 
 Change Evidence 是一个本地优先、CLI-first 的提交前风险摘要工具。它适合在 AI coding 工具一次修改大量文件后使用：你可以在提交前看到精简的终端报告，了解改了哪些区域、命中了哪些风险信号、提交前还需要检查什么。
 
-它不是 AI Code Reviewer。它不判断代码正确性，不修代码，不回滚，不批准提交，不创建 PR，也不会上传你的代码。它只读取本地 git diff，并输出克制的风险摘要。
+它不判断代码正确性，不联网，不修代码，不回滚，不批准提交，不创建 PR，也不会上传你的代码。它只读取本地 git diff，并输出克制的风险摘要。
+
+## 为什么需要 Change Evidence？
+你用 Cursor / Claude Code / Copilot 生成了 20 个文件，准备 git commit —— 但有没有混入敏感密钥？测试补了吗？生产配置改了吗？
+
+Change Evidence 在每次提交前打印一份精简的风险报告，帮你避免：
+
+🔑 密钥泄露 —— 误提交 token、密码、API key
+
+🧪 测试缺失 —— 改了生产代码却忘了写测试
+
+📦 配置漂移 —— 依赖或基础设施变更未检查
+
+🚨 高风险路径 —— auth、payment、database 等核心区域被意外改动
+
 
 ## 安装
 
