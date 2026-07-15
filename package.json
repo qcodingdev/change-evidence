@@ -22,9 +22,9 @@
     "dev": "tsx src/cli/index.ts",
     "postinstall": "node scripts/postinstall.cjs",
     "prepare": "npm run build",
-    "test": "vitest run",
+    "test": "npm run build && vitest run",
     "typecheck": "tsc --noEmit",
-    "prepublishOnly": "npm run typecheck && npm test && npm run build"
+    "prepublishOnly": "npm run typecheck && npm test"
   },
   "keywords": [
     "git",

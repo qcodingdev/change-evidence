@@ -1,5 +1,10 @@
 import { describe, it, expect } from 'vitest';
-import { getDiff, GitUnavailableError, NotARepositoryError } from '../src/git/diff-source.js';
+import {
+  getDiff,
+  GitUnavailableError,
+  InvalidRevisionError,
+  NotARepositoryError,
+} from '../src/git/diff-source.js';
 
 /**
  * Create a mock gitRunner that returns fixed outputs for the three diff
@@ -111,16 +116,15 @@ describe('getDiff', () => {
     ).rejects.toThrow(NotARepositoryError);
   });
 
-  it('returns empty result for unknown revision instead of throwing', async () => {
+  it('throws InvalidRevisionError for an unknown revision', async () => {
     const runner = async () => {
       const err = new Error('unknown revision') as Error & { stderr: string };
       err.stderr = "fatal: bad revision 'nonexistent...HEAD'";
       throw err;
     };
-    const result = await getDiff('branch', {
+    await expect(getDiff('branch', {
       base: 'nonexistent',
       gitRunner: runner,
-    });
-    expect(result.files).toHaveLength(0);
+    })).rejects.toThrow(InvalidRevisionError);
   });
 });

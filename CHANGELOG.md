@@ -4,6 +4,16 @@ All notable changes to Change Evidence will be documented in this file.
 
 This project follows semantic versioning where practical.
 
+## Unreleased
+
+### Fixed
+
+- Prevent prompt-mode hooks from silently allowing commits when confirmation is unavailable.
+- Respect linked worktrees and custom `core.hooksPath` locations when managing hooks.
+- Reject invalid branch base revisions instead of reporting an empty diff.
+- Keep risky-category and per-file severity consistent with the overall report.
+- Build the CLI before running end-to-end tests so clean checkouts do not skip them.
+
 ## 0.1.0
 
 Initial public release.

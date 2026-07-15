@@ -182,7 +182,7 @@ ce install-hook
 - hook 模式
 - 触发阈值
 
-它会写入一个由 Change Evidence 管理的 `.git/hooks/pre-commit` 脚本，并把你的选择保存到 `.change-evidence.yml`。
+它会在 Git 实际使用的 hooks 目录（包括 `core.hooksPath`）写入一个由 Change Evidence 管理的 `pre-commit` 脚本，并把你的选择保存到 `.change-evidence.yml`。
 
 Hook 按仓库生效。在一个项目里安装 hook，不会影响其他项目。如果 IDE 走标准 git hooks 流程提交，例如 IntelliJ IDEA 默认的 Git commit 流程，也会触发该 hook。使用 `--no-verify` 或 IDE 中跳过 hooks 的设置时不会触发。
 
@@ -192,7 +192,7 @@ Hook 模式：
 |---|---|
 | `off` | 不自动运行 |
 | `report` | 打印报告并继续提交 |
-| `prompt` | 命中触发规则时询问是否继续 |
+| `prompt` | 命中触发规则时询问是否继续；无可交互终端时中止提交 |
 | `block` | 仅在高风险触发规则命中时阻止提交 |
 
 触发规则同时使用变更文件数和总体风险等级。已有的非 Change Evidence 管理的 pre-commit hook 会被保留，除非传入 `--force`。

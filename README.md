@@ -182,7 +182,7 @@ The installer asks for:
 - hook mode
 - trigger thresholds
 
-It writes a managed `.git/hooks/pre-commit` script and persists your answers to `.change-evidence.yml`.
+It writes a managed `pre-commit` script to Git's effective hooks directory (including `core.hooksPath`) and persists your answers to `.change-evidence.yml`.
 
 Hooks are repository-local. Installing the hook in one project does not affect other projects. If your IDE commits through normal git hooks, such as IntelliJ IDEA's default Git commit flow, the hook will run there too. Commits made with `--no-verify` or IDE settings that skip hooks will not trigger it.
 
@@ -192,7 +192,7 @@ Hook modes:
 |---|---|
 | `off` | Do not run automatically |
 | `report` | Print the report and allow the commit |
-| `prompt` | Ask whether to continue when trigger rules match |
+| `prompt` | Ask whether to continue when trigger rules match; abort if no interactive terminal is available |
 | `block` | Block only when a high-risk trigger matches |
 
 Trigger rules use both changed-file count and overall risk level. Existing pre-commit hooks not created by Change Evidence are preserved unless you pass `--force`.

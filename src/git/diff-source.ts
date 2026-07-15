@@ -18,6 +18,14 @@ export class NotARepositoryError extends Error {
   }
 }
 
+/** Error thrown when a requested branch/base revision does not exist. */
+export class InvalidRevisionError extends Error {
+  constructor(message = 'unknown or invalid git revision') {
+    super(message);
+    this.name = 'InvalidRevisionError';
+  }
+}
+
 export interface DiffSourceOptions {
   /** Working directory to run git in. Defaults to process.cwd(). */
   cwd?: string;
@@ -56,10 +64,9 @@ function diffArgs(scope: DiffScope, base: string | undefined, format: string): s
 
 /**
  * Classify an error from either execa or an injected gitRunner and translate
- * it into one of our domain errors, or return empty string for recoverable
- * cases (unknown revision).
+ * it into one of our domain errors.
  */
-function classifyGitError(err: unknown): string | never {
+function classifyGitError(err: unknown): never {
   const e = err as { exitCode?: number; stderr?: string; message?: string; code?: string };
 
   // ENOENT-style: git binary not found (execa or injected runner).
@@ -74,9 +81,9 @@ function classifyGitError(err: unknown): string | never {
     throw new NotARepositoryError();
   }
 
-  // Unknown commit / bad ref — treat as empty diff.
+  // An invalid base must fail closed instead of looking like an empty diff.
   if (stderr.includes('unknown revision') || stderr.includes('bad revision')) {
-    return '';
+    throw new InvalidRevisionError(stderr.trim() || undefined);
   }
 
   throw err;
@@ -96,8 +103,7 @@ async function runGit(
     const result = await execa('git', args, { cwd, reject: true });
     return result.stdout;
   } catch (err) {
-    const handled = classifyGitError(err);
-    return handled; // empty string for recoverable cases
+    return classifyGitError(err);
   }
 }
 

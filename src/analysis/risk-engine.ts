@@ -7,7 +7,6 @@ import type {
   RiskReport,
   RiskSummary,
   Signal,
-  SignalSeverity,
 } from '../shared/types.js';
 import { classifyFile, classifyFiles, matchHighRiskPath, LOW_RISK_CATEGORIES } from './file-classifier.js';
 import { detectTestSignals } from './test-signal.js';
@@ -64,21 +63,6 @@ function detectPublicApiSignals(files: import('../shared/types.js').FileChange[]
   return signals;
 }
 
-/**
- * Classify a file's risk severity based on its category and path.
- */
-function fileSeverity(
-  category: FileCategory,
-  isHighRiskPath: boolean,
-  hasSecretKeyword: boolean,
-): SignalSeverity {
-  if (hasSecretKeyword) return 'high';
-  if (isHighRiskPath) return 'high';
-  if (category === 'config' || category === 'dependency' || category === 'ci' || category === 'migration') return 'medium';
-  if (category === 'production') return 'low';
-  return 'ok';
-}
-
 /** Return the highest risk level among all signals. */
 function computeOverallRisk(signals: Signal[]): RiskLevel {
   const RANK: Record<RiskLevel, number> = { ok: 0, low: 1, medium: 2, high: 3 };
@@ -124,14 +108,23 @@ export function analyse(diff: DiffResult, config: ChangeEvidenceConfig): RiskRep
   for (const f of files) {
     const cat = categories.get(f.path) ?? 'production';
     const matchedPattern = matchHighRiskPath(f.path, config.risk.highPaths);
+    const categorySignalType = deriveSignalTypeForCategory(cat);
 
     if (matchedPattern) {
       highRiskFileSet.add(f.path);
-      const signalType = deriveSignalTypeForCategory(cat);
       allSignals.push({
-        type: signalType,
+        type: categorySignalType,
         severity: cat === 'ci' ? 'medium' : 'high',
         message: `High-risk path: ${f.path} (matched ${matchedPattern})`,
+        paths: [f.path],
+      });
+    } else if (categorySignalType !== 'high-risk-path') {
+      // Risky categories must affect overall risk even when they do not match
+      // a configured high-risk path glob.
+      allSignals.push({
+        type: categorySignalType,
+        severity: 'medium',
+        message: `${cat} file changed: ${f.path}`,
         paths: [f.path],
       });
     }
@@ -171,10 +164,13 @@ export function analyse(diff: DiffResult, config: ChangeEvidenceConfig): RiskRep
     if (publicApiSignals.some((s) => s.paths?.includes(f.path))) reasons.push('public-api-change');
 
     if (reasons.length > 0) {
+      const fileSignals = allSignals.filter((signal) =>
+        signal.paths?.includes(f.path),
+      );
       highRiskFiles.push({
         path: f.path,
         category: cat,
-        severity: fileSeverity(cat, isHighPath, hasSecret),
+        severity: computeOverallRisk(fileSignals),
         reasons,
       });
     }

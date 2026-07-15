@@ -67,7 +67,8 @@ export async function runHook(
 ): Promise<HookRunResult> {
   const mode = config.hook.mode;
   const write = io.write ?? (() => undefined);
-  const promptYesNo = io.promptYesNo ?? (async () => true);
+  // A missing prompt adapter must never turn prompt mode into an implicit yes.
+  const promptYesNo = io.promptYesNo ?? (async () => false);
 
   if (!config.hook.enabled) {
     return { exitCode: 0, triggered: false, blocked: false, prompted: false };

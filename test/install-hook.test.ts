@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { existsSync, readFileSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
+import { execFileSync } from 'node:child_process';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import {
@@ -80,6 +81,23 @@ describe('resolveHookPath', () => {
     } finally {
       rmSync(altGitdir, { recursive: true, force: true });
     }
+  });
+
+  it('resolves a relative gitdir indirection against the worktree', () => {
+    const repo = makeRepo();
+    const altGitdir = join(tmpDir, 'git-data');
+    mkdirSync(join(altGitdir, 'hooks'), { recursive: true });
+    rmSync(join(repo, '.git'), { recursive: true, force: true });
+    writeFileSync(join(repo, '.git'), 'gitdir: git-data');
+    expect(resolveHookPath(repo)).toBe(join(altGitdir, 'hooks', 'pre-commit'));
+  });
+
+  it('respects core.hooksPath in a real repository', () => {
+    const repo = makeRepo();
+    rmSync(join(repo, '.git'), { recursive: true, force: true });
+    execFileSync('git', ['init'], { cwd: repo, stdio: 'ignore' });
+    execFileSync('git', ['config', 'core.hooksPath', '.githooks'], { cwd: repo });
+    expect(resolveHookPath(repo)).toBe(join(repo, '.githooks', 'pre-commit'));
   });
 });
 

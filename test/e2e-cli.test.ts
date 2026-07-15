@@ -12,8 +12,8 @@ const CLI = fileURLToPath(new URL('../dist/cli/index.js', import.meta.url));
  * End-to-end acceptance tests that exercise the built CLI binary against the
  * real git repository. These run after `npm run build`.
  *
- * If the dist bundle doesn't exist (e.g. running tests before a build), the
- * suite is skipped rather than failing — unit tests cover the logic.
+ * `npm test` builds the CLI before Vitest starts. Direct Vitest invocations
+ * may still skip this suite when the bundle does not exist.
  */
 const hasBuild = existsSync(CLI);
 const describeOrSkip = hasBuild ? describe : describe.skip;
@@ -69,6 +69,54 @@ describeOrSkip('CLI end-to-end (built binary)', () => {
     }
   }, 15000);
 
+  it('a prompt-mode hook blocks instead of committing when no terminal is available', async () => {
+    const tmpRepo = mkdtempSync(join(tmpdir(), 'ce-e2e-hook-no-tty-'));
+    try {
+      await execa('git', ['init'], { cwd: tmpRepo });
+      writeFileSync(join(tmpRepo, '.change-evidence.yml'), [
+        'language: en',
+        'hook:',
+        '  enabled: true',
+        '  mode: prompt',
+        '  trigger:',
+        '    minChangedFiles: 1',
+        '    minRiskLevel: low',
+        '',
+      ].join('\n'));
+      writeFileSync(join(tmpRepo, 'app.ts'), 'export function answer() { return 42; }\n');
+      await execa('git', ['add', 'app.ts'], { cwd: tmpRepo });
+      writeFileSync(
+        join(tmpRepo, '.git', 'hooks', 'pre-commit'),
+        `#!/bin/sh\nexec "${process.execPath}" "${CLI}" --staged --hook --no-color\n`,
+        { mode: 0o755 },
+      );
+
+      const commit = await execa(
+        'git',
+        [
+          '-c',
+          'user.email=ce@example.test',
+          '-c',
+          'user.name=Change Evidence',
+          'commit',
+          '-m',
+          'must be blocked',
+        ],
+        { cwd: tmpRepo, reject: false, detached: true },
+      );
+      expect(commit.exitCode).not.toBe(0);
+      expect(commit.stderr).toContain('no interactive terminal');
+
+      const head = await execa('git', ['rev-parse', '--verify', 'HEAD'], {
+        cwd: tmpRepo,
+        reject: false,
+      });
+      expect(head.exitCode).not.toBe(0);
+    } finally {
+      rmSync(tmpRepo, { recursive: true, force: true });
+    }
+  }, 15000);
+
   it('ce --help exits 0 and shows usage', async () => {
     const { exitCode, stdout } = await execa('node', [CLI, '--help'], {
       cwd: REPO_ROOT,
@@ -102,6 +150,16 @@ describeOrSkip('CLI end-to-end (built binary)', () => {
       { cwd: REPO_ROOT, reject: false },
     );
     expect(exitCode).not.toBe(0);
+  }, 15000);
+
+  it('ce --base with an unknown revision exits non-zero', async () => {
+    const { exitCode, stderr } = await execa(
+      'node',
+      [CLI, '--base', 'ce-definitely-missing-base', '--no-color'],
+      { cwd: REPO_ROOT, reject: false },
+    );
+    expect(exitCode).not.toBe(0);
+    expect(stderr).toMatch(/unknown revision|bad revision|ambiguous argument/i);
   }, 15000);
 
   it('ce --staged --no-color does not leak secret-looking values', async () => {

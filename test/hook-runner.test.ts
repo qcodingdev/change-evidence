@@ -154,6 +154,15 @@ describe('runHook — prompt mode', () => {
     expect(result.exitCode).toBe(1);
     expect(result.blocked).toBe(true);
   });
+
+  it('blocks instead of silently allowing when no prompt adapter is available', async () => {
+    const config = makeConfig('prompt');
+    const report = makeReport(20, 'high');
+    const result = await runHook(report, config);
+    expect(result.prompted).toBe(true);
+    expect(result.exitCode).toBe(1);
+    expect(result.blocked).toBe(true);
+  });
 });
 
 describe('runHook — block mode', () => {

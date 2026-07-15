@@ -15,6 +15,7 @@ import { analyse } from '../analysis/risk-engine.js';
 import { renderReport } from '../render/terminal-report.js';
 import { installHook, uninstallHook } from '../hook/install-hook.js';
 import { runHook } from '../hook/hook-runner.js';
+import { askHookYesNo } from './terminal-prompt.js';
 
 export const VERSION = '0.1.0';
 
@@ -62,7 +63,11 @@ async function defaultRunAnalysis(
     return;
   }
 
-  const diff = await getDiff(options.scope, { base: options.base, cwd });
+  const diff = await getDiff(options.scope, {
+    base: options.base,
+    cwd,
+    sensitiveKeywords: options.config.risk.sensitiveKeywords,
+  });
   const report = analyse(diff, options.config);
   const output = renderReport(report, {
     scope: options.scope,
@@ -73,7 +78,7 @@ async function defaultRunAnalysis(
 
   if (options.hookMode) {
     const result = await runHook(report, options.config, {
-      promptYesNo: askYesNo,
+      promptYesNo: askHookYesNo,
       write: (m) => process.stdout.write(m + '\n'),
     });
     if (result.exitCode !== 0) {
@@ -94,15 +99,6 @@ function createRl(): readline.Interface | null {
 async function askLine(rl: readline.Interface, question: string): Promise<string> {
   const answer = await rl.question(question);
   return answer.trim();
-}
-
-/** Yes/no prompter for the hook prompt mode. Non-TTY → default yes. */
-async function askYesNo(question: string): Promise<boolean> {
-  const rl = createRl();
-  if (!rl) return true;
-  const answer = (await askLine(rl, question)).toLowerCase();
-  rl.close();
-  return answer === 'y' || answer === 'yes';
 }
 
 /**

@@ -64,6 +64,21 @@ describe('analyse (risk engine integration)', () => {
     const ciFile = report.highRiskFiles.find((f) => f.path.includes('ci.yml'));
     expect(ciFile).toBeDefined();
     expect(ciFile!.reasons).toContain('ci-change');
+    expect(ciFile!.severity).toBe(report.overallRisk);
+  });
+
+  it('raises medium risk for config files outside the high-risk path globs', () => {
+    const report = analyse(makeDiff([makeFile('settings/dev.yml')]), CONFIG);
+    expect(report.overallRisk).toBe('medium');
+    expect(report.highRiskFiles[0].severity).toBe('medium');
+  });
+
+  it('shows deleted test files with the high severity of their signal', () => {
+    const report = analyse(makeDiff([
+      makeFile('src/a.test.ts', { status: 'deleted' }),
+    ]), CONFIG);
+    expect(report.overallRisk).toBe('high');
+    expect(report.highRiskFiles[0].severity).toBe('high');
   });
 
   it('detects test-missing signal', () => {

@@ -1,5 +1,6 @@
 import { existsSync, readFileSync, writeFileSync, mkdirSync, chmodSync, statSync, unlinkSync } from 'node:fs';
-import { join, dirname } from 'node:path';
+import { execFileSync } from 'node:child_process';
+import { join, dirname, isAbsolute, resolve } from 'node:path';
 import { parseDocument } from 'yaml';
 import type { ChangeEvidenceConfig, HookMode, Language, RiskLevel } from '../shared/types.js';
 
@@ -36,6 +37,34 @@ export function resolveHookPath(repoRoot: string): string | undefined {
   const dotGit = join(repoRoot, '.git');
   if (!existsSync(dotGit)) return undefined;
 
+  // Ask Git first so linked worktrees and core.hooksPath are respected.
+  try {
+    const configuredHooksPath = execFileSync(
+      'git',
+      ['config', '--path', '--get', 'core.hooksPath'],
+      { cwd: repoRoot, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] },
+    ).trim();
+    if (configuredHooksPath) {
+      const hooksDir = isAbsolute(configuredHooksPath)
+        ? configuredHooksPath
+        : resolve(repoRoot, configuredHooksPath);
+      return join(hooksDir, 'pre-commit');
+    }
+  } catch {
+    // No custom hooks path (exit 1) or not a real Git repo; continue.
+  }
+
+  try {
+    const gitResolvedPath = execFileSync(
+      'git',
+      ['rev-parse', '--path-format=absolute', '--git-path', 'hooks/pre-commit'],
+      { cwd: repoRoot, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] },
+    ).trim();
+    if (gitResolvedPath) return gitResolvedPath;
+  } catch {
+    // Fall back to filesystem inspection for lightweight/fake repositories.
+  }
+
   // A `.git` file (worktree/submodule) contains `gitdir: /path`. A real
   // `.git` directory is the normal case. Use statSync to tell them apart.
   const stat = statSync(dotGit);
@@ -43,7 +72,10 @@ export function resolveHookPath(repoRoot: string): string | undefined {
     const content = readFileSync(dotGit, 'utf8');
     if (content.startsWith('gitdir:')) {
       const gitdir = content.split('gitdir:')[1].trim();
-      return join(gitdir, 'hooks', 'pre-commit');
+      const resolvedGitdir = isAbsolute(gitdir)
+        ? gitdir
+        : resolve(dirname(dotGit), gitdir);
+      return join(resolvedGitdir, 'hooks', 'pre-commit');
     }
   }
 
