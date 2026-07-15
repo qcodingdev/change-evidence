@@ -17,7 +17,7 @@ import { installHook, uninstallHook } from '../hook/install-hook.js';
 import { runHook } from '../hook/hook-runner.js';
 import { askHookYesNo } from './terminal-prompt.js';
 
-export const VERSION = '0.1.0';
+export const VERSION = '0.1.1';
 
 export type RunAnalysis = (options: ResolvedOptions) => Promise<void> | void;
 

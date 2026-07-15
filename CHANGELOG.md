@@ -4,7 +4,7 @@ All notable changes to Change Evidence will be documented in this file.
 
 This project follows semantic versioning where practical.
 
-## Unreleased
+## 0.1.1 - 2026-07-15
 
 ### Fixed
 
