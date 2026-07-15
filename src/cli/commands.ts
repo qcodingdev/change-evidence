@@ -16,7 +16,11 @@ import { renderReport } from '../render/terminal-report.js';
 import { installHook, uninstallHook } from '../hook/install-hook.js';
 import { runHook } from '../hook/hook-runner.js';
 import { t } from '../render/i18n.js';
-import { uninstallGlobalCli, updateGlobalCli } from './package-manager.js';
+import {
+  checkGlobalCliVersion,
+  uninstallGlobalCli,
+  updateGlobalCli,
+} from './package-manager.js';
 import { askHookYesNo } from './terminal-prompt.js';
 
 export const VERSION = '0.1.1';
@@ -35,6 +39,7 @@ export type UninstallHook = (options: {
 
 export type UpdateCli = (options: {
   config: ChangeEvidenceConfig;
+  check: boolean;
 }) => Promise<void> | void;
 
 export type UninstallCli = (options: {
@@ -213,7 +218,12 @@ async function confirmGlobalUninstall(language: Language): Promise<boolean> {
 
 async function defaultUpdateCli(options: {
   config: ChangeEvidenceConfig;
+  check: boolean;
 }): Promise<void> {
+  if (options.check) {
+    await checkGlobalCliVersion(VERSION, options.config.language);
+    return;
+  }
   await updateGlobalCli(options.config.language);
 }
 
@@ -363,9 +373,19 @@ export function createProgram(deps: CreateProgramDeps = {}): Command {
     .command('update')
     .description('update the global CLI to the latest npm version')
     .allowExcessArguments(false)
+    .option('--check', 'check for an update without installing it')
+    .action(async (commandOptions: { check?: boolean }) => {
+      const config = loadConfig(cwd).config;
+      await doUpdateCli({ config, check: commandOptions.check === true });
+    });
+
+  program
+    .command('version')
+    .description('show the installed and latest npm versions')
+    .allowExcessArguments(false)
     .action(async () => {
       const config = loadConfig(cwd).config;
-      await doUpdateCli({ config });
+      await doUpdateCli({ config, check: true });
     });
 
   program

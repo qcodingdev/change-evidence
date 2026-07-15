@@ -29,6 +29,8 @@ describe('t', () => {
 
   it('localizes package management messages', () => {
     expect(t('package.updateStarting', 'zh-CN')).toContain('正在通过 npm 更新');
+    expect(t('package.updateAvailable', 'zh-CN', { version: '0.2.0' })).toContain('ce update');
+    expect(t('package.upToDate', 'en')).toContain('up to date');
     expect(t('package.uninstallConfirm', 'en')).toContain('uninstalls the global CLI');
     expect(t('package.otherHooksWarning', 'zh-CN')).toContain('其他仓库');
   });

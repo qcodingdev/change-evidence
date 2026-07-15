@@ -9,6 +9,7 @@ This project follows semantic versioning where practical.
 ### Added
 
 - Add `ce update` for npm-managed global updates.
+- Add `ce version` and `ce update --check` for explicit latest-version queries and upgrade reminders.
 - Add confirmed `ce uninstall` and non-interactive `ce uninstall --yes` flows that safely remove the current managed hook before uninstalling the global CLI.
 
 ## 0.1.1 - 2026-07-15

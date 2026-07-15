@@ -16,7 +16,7 @@ AI coding 后，在 commit 前快速看清本地代码改动风险。
 
 Change Evidence 是一个本地优先、CLI-first 的提交前风险摘要工具。它适合在 AI coding 工具一次修改大量文件后使用：你可以在提交前看到精简的终端报告，了解改了哪些区域、命中了哪些风险信号、提交前还需要检查什么。
 
-它不判断代码正确性，风险分析不联网，不修代码，不回滚，不批准提交，不创建 PR，也不会上传你的代码。它只读取本地 git diff，并输出克制的风险摘要。只有用户主动执行 `ce update` 时才会通过 npm 下载更新。
+它不判断代码正确性，风险分析不联网，不修代码，不回滚，不批准提交，不创建 PR，也不会上传你的代码。它只读取本地 git diff，并输出克制的风险摘要。只有用户主动执行版本查询或更新命令时才会访问 npm。
 
 ## 为什么需要 Change Evidence？
 你用 Cursor / Claude Code / Copilot 生成了 20 个文件，准备 git commit —— 但有没有混入敏感密钥？测试补了吗？生产配置改了吗？
@@ -93,6 +93,9 @@ ce --base main
 | `ce uninstall-hook` | 从当前仓库移除本工具管理的 pre-commit hook |
 | `ce hook install` | `ce install-hook` 的别名 |
 | `ce hook uninstall` | `ce uninstall-hook` 的别名 |
+| `ce --version` | 离线显示当前安装版本 |
+| `ce version` | 查询 npm，显示当前版、最新版及升级提醒 |
+| `ce update --check` | 只检查是否有更新，不执行安装 |
 | `ce update` | 通过 npm 更新全局安装的 CLI |
 | `ce uninstall` | 确认后移除当前仓库 Hook，并全局卸载 CLI |
 | `ce uninstall --yes` | 明确接受影响后，在非交互环境直接卸载 |
@@ -230,6 +233,22 @@ ce uninstall-hook
 
 ## 更新与卸载
 
+仅查看当前安装版本，不访问网络：
+
+```bash
+ce --version
+```
+
+查询 npm 最新版本，并在需要时显示升级提醒：
+
+```bash
+ce version
+# 或
+ce update --check
+```
+
+版本检查只会在用户明确执行命令时发生，普通风险分析和 Git Hook 不会为了检查更新而访问 npm。
+
 通过 npm 更新全局安装的 CLI：
 
 ```bash
@@ -263,7 +282,7 @@ npm uninstall -g change-evidence
 
 ## 隐私
 
-Change Evidence 的风险分析完全在本地运行。它调用 `git diff`，在当前进程中分析输出，然后打印终端报告。它不会把代码、diff 或 secret 发送到远程服务。只有 `ce update` 等用户主动执行的包管理操作会调用 npm，并可能访问当前配置的 npm registry。
+Change Evidence 的风险分析完全在本地运行。它调用 `git diff`，在当前进程中分析输出，然后打印终端报告。它不会把代码、diff 或 secret 发送到远程服务。只有 `ce version`、`ce update --check`、`ce update` 等用户主动执行的包管理操作会调用 npm，并可能访问当前配置的 npm registry。
 
 ## 贡献
 

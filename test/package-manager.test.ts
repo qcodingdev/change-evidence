@@ -10,6 +10,8 @@ import {
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import {
+  checkGlobalCliVersion,
+  compareVersions,
   uninstallGlobalCli,
   updateGlobalCli,
 } from '../src/cli/package-manager.js';
@@ -50,6 +52,46 @@ describe('updateGlobalCli', () => {
     await expect(updateGlobalCli('en', {
       runNpm: async () => { throw new Error('npm failed'); },
     })).rejects.toThrow('npm failed');
+  });
+});
+
+describe('compareVersions', () => {
+  it('compares stable semantic versions', () => {
+    expect(compareVersions('0.1.2', '0.1.1')).toBeGreaterThan(0);
+    expect(compareVersions('1.0.0', '1.0.0')).toBe(0);
+    expect(compareVersions('1.0.0', '2.0.0')).toBeLessThan(0);
+  });
+
+  it('orders prerelease identifiers according to semver precedence', () => {
+    expect(compareVersions('1.0.0', '1.0.0-rc.1')).toBeGreaterThan(0);
+    expect(compareVersions('1.0.0-rc.2', '1.0.0-rc.1')).toBeGreaterThan(0);
+    expect(compareVersions('1.0.0-alpha.1', '1.0.0-alpha.beta')).toBeLessThan(0);
+  });
+
+  it('returns undefined for invalid versions', () => {
+    expect(compareVersions('latest', '0.1.1')).toBeUndefined();
+  });
+});
+
+describe('checkGlobalCliVersion', () => {
+  it('prints an upgrade reminder when npm latest is newer', async () => {
+    const write = vi.fn();
+    await checkGlobalCliVersion('0.1.1', 'en', {
+      readLatestVersion: async () => '0.2.0',
+      write,
+    });
+    expect(write).toHaveBeenCalledWith('Current version: 0.1.1');
+    expect(write).toHaveBeenCalledWith('Latest npm version: 0.2.0');
+    expect(write).toHaveBeenCalledWith(expect.stringContaining('ce update'));
+  });
+
+  it('reports when the installed version is current', async () => {
+    const write = vi.fn();
+    await checkGlobalCliVersion('0.1.1', 'zh-CN', {
+      readLatestVersion: async () => '0.1.1',
+      write,
+    });
+    expect(write).toHaveBeenCalledWith('当前已是最新版本。');
   });
 });
 

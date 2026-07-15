@@ -18,7 +18,7 @@ async function runProgram(
     force?: boolean;
   }>;
   uninstallCalls: ChangeEvidenceConfig[];
-  updateCalls: ChangeEvidenceConfig[];
+  updateCalls: Array<{ config: ChangeEvidenceConfig; check: boolean }>;
   packageUninstallCalls: Array<{ config: ChangeEvidenceConfig; yes: boolean }>;
   stdout: string[];
 }> {
@@ -29,7 +29,10 @@ async function runProgram(
     force?: boolean;
   }> = [];
   const uninstallCalls: ChangeEvidenceConfig[] = [];
-  const updateCalls: ChangeEvidenceConfig[] = [];
+  const updateCalls: Array<{
+    config: ChangeEvidenceConfig;
+    check: boolean;
+  }> = [];
   const packageUninstallCalls: Array<{
     config: ChangeEvidenceConfig;
     yes: boolean;
@@ -48,7 +51,7 @@ async function runProgram(
       uninstallCalls.push(options.config);
     },
     updateCli: async (options) => {
-      updateCalls.push(options.config);
+      updateCalls.push(options);
     },
     uninstallCli: async (options) => {
       packageUninstallCalls.push(options);
@@ -151,7 +154,20 @@ describe('createProgram CLI routing', () => {
   it('routes `ce update` to the global update handler', async () => {
     const { analysisCalls, updateCalls } = await runProgram(['update']);
     expect(updateCalls).toHaveLength(1);
+    expect(updateCalls[0].check).toBe(false);
     expect(analysisCalls).toHaveLength(0);
+  });
+
+  it('routes `ce update --check` to version checking without installing', async () => {
+    const { updateCalls } = await runProgram(['update', '--check']);
+    expect(updateCalls).toHaveLength(1);
+    expect(updateCalls[0].check).toBe(true);
+  });
+
+  it('routes `ce version` to the remote version query', async () => {
+    const { updateCalls } = await runProgram(['version']);
+    expect(updateCalls).toHaveLength(1);
+    expect(updateCalls[0].check).toBe(true);
   });
 
   it('routes `ce uninstall` to the global uninstall handler', async () => {

@@ -28,7 +28,7 @@ Change Evidence prints a concise risk report before every commit, helping you ca
 
 🚨 High-risk paths — unexpected changes to auth, payment, or database code
 
-Not an AI reviewer. Risk analysis stays local. No code upload. — It only reads local git diff and prints a terminal report. The explicit `ce update` command uses npm to download updates.
+Not an AI reviewer. Risk analysis stays local. No code upload. — It only reads local git diff and prints a terminal report. Explicit version and update commands use npm when you request them.
 
 ## Install
 
@@ -91,6 +91,9 @@ ce --base main
 | `ce uninstall-hook` | Remove the managed pre-commit hook from the current repository |
 | `ce hook install` | Alias for `ce install-hook` |
 | `ce hook uninstall` | Alias for `ce uninstall-hook` |
+| `ce --version` | Print the installed version without a network request |
+| `ce version` | Query npm and show the installed/latest versions with an upgrade reminder |
+| `ce update --check` | Check for an update without installing it |
 | `ce update` | Update the globally installed CLI through npm |
 | `ce uninstall` | Confirm, remove the current managed hook, and uninstall the global CLI |
 | `ce uninstall --yes` | Uninstall non-interactively after explicitly accepting the impact |
@@ -228,6 +231,22 @@ Uninstall is safe by default: it only removes hooks written by Change Evidence a
 
 ## Update And Uninstall
 
+Print only the installed version without accessing the network:
+
+```bash
+ce --version
+```
+
+Query npm for the latest version and show an upgrade reminder when needed:
+
+```bash
+ce version
+# or
+ce update --check
+```
+
+Version checks are explicit. Normal risk analysis and Git hooks never contact npm to check for updates.
+
 Update the globally installed CLI through npm:
 
 ```bash
@@ -261,7 +280,7 @@ npm uninstall -g change-evidence
 
 ## Privacy
 
-Change Evidence risk analysis runs locally. It shells out to `git diff`, analyzes the output in process, and prints a terminal report. It does not send code, diffs, or secrets to a remote service. Only explicit package-management actions such as `ce update` invoke npm and may access the configured npm registry.
+Change Evidence risk analysis runs locally. It shells out to `git diff`, analyzes the output in process, and prints a terminal report. It does not send code, diffs, or secrets to a remote service. Only explicit package-management actions such as `ce version`, `ce update --check`, and `ce update` invoke npm and may access the configured npm registry.
 
 ## Contributing
 

@@ -189,6 +189,30 @@ export const MESSAGES = {
     'zh-CN': '更新完成。重新运行 ce --version 可查看当前版本。',
     en: 'Update complete. Run ce --version again to see the installed version.',
   },
+  'package.versionCurrent': {
+    'zh-CN': '当前版本：{version}',
+    en: 'Current version: {version}',
+  },
+  'package.versionLatest': {
+    'zh-CN': 'npm 最新版本：{version}',
+    en: 'Latest npm version: {version}',
+  },
+  'package.updateAvailable': {
+    'zh-CN': '发现新版本 {version}，运行 ce update 即可升级。',
+    en: 'Update {version} is available. Run ce update to install it.',
+  },
+  'package.upToDate': {
+    'zh-CN': '当前已是最新版本。',
+    en: 'Change Evidence is up to date.',
+  },
+  'package.versionAhead': {
+    'zh-CN': '当前版本高于 npm 最新版本，可能是开发版本。',
+    en: 'The installed version is newer than npm latest and may be a development build.',
+  },
+  'package.versionUnknown': {
+    'zh-CN': '无法比较版本号，请手动确认是否需要升级。',
+    en: 'The versions could not be compared; check manually before updating.',
+  },
   'package.uninstallConfirm': {
     'zh-CN': '将移除当前仓库的托管 Hook 并全局卸载 CLI；其他仓库的 Hook 不会自动移除。是否继续？[y/N] ',
     en: 'This removes the current managed hook and uninstalls the global CLI; hooks in other repositories are not removed. Continue? [y/N] ',
