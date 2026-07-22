@@ -181,6 +181,18 @@ function escapeRegExp(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
+/** Build redaction patterns for a caller-provided sensitive keyword list. */
+function sensitivePatterns(keywords?: readonly string[]): RegExp[] | undefined {
+  const nonEmptyKeywords = keywords?.filter((keyword) => keyword.length > 0);
+  if (!nonEmptyKeywords?.length) return undefined;
+  return [
+    new RegExp(
+      `\\b(${nonEmptyKeywords.map(escapeRegExp).join('|')})\\s*[=:]\\s*.+`,
+      'gi',
+    ),
+  ];
+}
+
 /**
  * Redact secret-looking values from a unified-diff patch string.
  *
@@ -212,6 +224,17 @@ export function redactSecrets(patch: string, patterns: RegExp[] = DEFAULT_SENSIT
 }
 
 /**
+ * Redact a patch using the configured keyword list. This keeps untracked-file
+ * collection on the same redaction path as regular Git diffs.
+ */
+export function redactSecretsForKeywords(
+  patch: string,
+  keywords?: readonly string[],
+): string {
+  return redactSecrets(patch, sensitivePatterns(keywords));
+}
+
+/**
  * Parse the output of `git diff --unified=0` into a map of
  * path → patch string (secrets redacted).
  *
@@ -231,14 +254,7 @@ export function parseUnifiedDiff(
   const chunks: string[] = [];
 
   // Build custom patterns if caller provides keywords.
-  const patterns = sensitiveKeywords?.length
-    ? [
-        new RegExp(
-          `\\b(${sensitiveKeywords.map(escapeRegExp).join('|')})\\s*[=:]\\s*.+`,
-          'gi',
-        ),
-      ]
-    : undefined;
+  const patterns = sensitivePatterns(sensitiveKeywords);
 
   function flush(): void {
     if (currentPath && chunks.length > 0 && !currentIsBinary) {

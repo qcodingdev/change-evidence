@@ -1,0 +1,15 @@
+{
+  "displayName": "AI Change Radar",
+  "description": "Local risk checks for AI-assisted code changes.",
+  "untrustedWorkspace": "AI Change Radar runs Git and reads local diffs, so workspace trust is required.",
+  "command.analyzeStaged": "Analyze Staged Changes",
+  "command.analyzeWorkingTree": "Analyze Working Tree",
+  "command.reviewAndCommit": "Review & Commit",
+  "command.clearResults": "Clear Results",
+  "command.openFile": "Open Risk File",
+  "command.showOutput": "Show Output",
+  "view.results": "Change Risks",
+  "view.welcome": "Review code changes locally before commit.",
+  "config.includeUntracked": "Include untracked, non-ignored files in working-tree analysis.",
+  "config.revealOutputOnSuccess": "Reveal the AI Change Radar output channel after a successful analysis."
+}

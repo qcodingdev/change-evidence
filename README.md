@@ -1,36 +1,79 @@
-# Change Evidence
+<p align="center">
+  <img src="assets/brand/change-evidence-icon-256.png" width="128" alt="Change Evidence icon">
+</p>
 
-English | [简体中文](README.zh-CN.md)
-
-[![CI](https://github.com/qcodingdev/change-evidence/actions/workflows/ci.yml/badge.svg)](https://github.com/qcodingdev/change-evidence/actions/workflows/ci.yml)
+<h1 align="center">Change Evidence</h1>
 
 <p align="center">
-  <b>Spot code risks in 3 seconds before you commit</b><br>
-  Pre-commit risk summaries for AI-assisted code changes
+  <b>See the risk before you commit the change.</b><br>
+  Local, deterministic pre-commit evidence for AI-assisted development.
+</p>
+
+<p align="center">
+  English · <a href="README.zh-CN.md">简体中文</a>
+</p>
+
+<p align="center">
+  <a href="https://github.com/qcodingdev/change-evidence/actions/workflows/ci.yml"><img src="https://github.com/qcodingdev/change-evidence/actions/workflows/ci.yml/badge.svg" alt="Core CI"></a>
+  <a href="https://github.com/qcodingdev/change-evidence/actions/workflows/plugins.yml"><img src="https://github.com/qcodingdev/change-evidence/actions/workflows/plugins.yml/badge.svg" alt="Plugin CI"></a>
+  <img src="https://img.shields.io/badge/privacy-local--only-22c55e" alt="Local-only analysis">
+  <img src="https://img.shields.io/badge/license-MIT-blue" alt="MIT License">
 </p>
 
 ![Change Evidence terminal demo](assets/change-evidence-demo.gif)
 
-Change Evidence is a local, CLI-first tool that summarizes risky parts of your uncommitted code changes before you commit. It is designed for the moment after AI coding tools modify many files and you want a short, deterministic report: what changed, where the risk signals are, and what to check before committing.
+Change Evidence turns an uncommitted Git diff into a compact, explainable risk
+report. Use it after an AI coding agent—or a human—changes many files and you
+need to know what deserves attention before commit.
 
-It is not an AI code reviewer. It does not judge code correctness, fix code, revert changes, approve commits, open pull requests, or upload your code. It only reads local git diffs and prints a concise terminal report.
+The **AI Change Radar** product is available as a native **VS Code extension** and
+a native **JetBrains plugin**. Both are powered by the **Change Evidence** engine,
+which remains available as the `ce` **CLI/Git hook**. Normal analysis runs locally without an
+account, API key, telemetry, source upload, or remote model.
 
 ## Why Change Evidence?
-You just used Cursor / Claude Code / Copilot to generate 20 files. You're about to git commit — but did any secrets slip in? Are tests missing? Did production config change?
 
-Change Evidence prints a concise risk report before every commit, helping you catch:
+You just used Cursor, Claude Code, Copilot, or another coding agent to change 20
+files. Before commit, Change Evidence helps answer:
 
-🔑 Secrets — tokens, passwords, API keys accidentally committed
+- Did a credential-like literal or high-risk path slip into the diff?
+- Did production behavior change without a test change?
+- Did dependencies, runtime configuration, migrations, or CI change?
+- Is the change unusually large or likely to affect a public API?
 
-🧪 Missing tests — production code changed without test coverage
+The signals are deterministic and explainable. Change Evidence is not a
+compiler, full semantic analyzer, secret scanner, or automatic code reviewer,
+and it never automatically rewrites or rolls back user files.
 
-📦 Config drift — dependency or infrastructure changes unchecked
+## Choose Your Workflow
 
-🚨 High-risk paths — unexpected changes to auth, payment, or database code
+| Surface | Best for | Commit protection |
+|---|---|---|
+| AI Change Radar for VS Code | Staged/working-tree review inside VS Code | Explicit Review & Commit; aborts if the staged diff changes after review |
+| AI Change Radar for JetBrains IDEs | Native IDEA-family change review | Analyzes the exact selected commit changes; medium/high risk requires Continue or Cancel |
+| CLI + Git hook | Terminal use and repository-wide Git-client coverage | Configurable report, prompt, or high-risk block mode |
 
-Not an AI reviewer. Risk analysis stays local. No code upload. — It only reads local git diff and prints a terminal report. Explicit version and update commands use npm when you request them.
+See [IDE plugin usage](docs/PLUGIN_USAGE.md), [privacy](PRIVACY.md), and the
+[marketplace publishing guide](docs/PLUGIN_PUBLISHING.md).
 
-## Install
+## Install AI Change Radar
+
+With JDK 21 active, build both ready-to-install marketplace archives:
+
+```bash
+npm run build:plugins
+```
+
+The command produces:
+
+- `release-artifacts/ai-change-radar-0.1.0.vsix`
+- `release-artifacts/ai-change-radar-intellij-0.1.0.zip`
+
+Install the VSIX with **Extensions: Install from VSIX…** in VS Code. Install the
+ZIP with **Settings / Preferences → Plugins → Install Plugin from Disk…** in a
+compatible JetBrains IDE.
+
+## Install the CLI
 
 Requires Node.js 20+ and `git`.
 

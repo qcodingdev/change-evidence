@@ -1,38 +1,77 @@
-# Change Evidence
-
-[English](README.md) | 简体中文
-
-<h1 align="center">🔍 Change Evidence</h1>
 <p align="center">
-  <b>AI 编码后，提交前 3 秒看清代码风险</b><br>
-  AI 辅助代码变更的提交前风险摘要工具
+  <img src="assets/brand/change-evidence-icon-256.png" width="128" alt="Change Evidence 图标">
 </p>
 
-[![CI](https://github.com/qcodingdev/change-evidence/actions/workflows/ci.yml/badge.svg)](https://github.com/qcodingdev/change-evidence/actions/workflows/ci.yml)
+<h1 align="center">Change Evidence</h1>
 
-AI coding 后，在 commit 前快速看清本地代码改动风险。
+<p align="center">
+  <b>提交变更前，先看清风险。</b><br>
+  面向 AI 辅助开发的本地、确定性提交前变更证据。
+</p>
+
+<p align="center">
+  <a href="README.md">English</a> · 简体中文
+</p>
+
+<p align="center">
+  <a href="https://github.com/qcodingdev/change-evidence/actions/workflows/ci.yml"><img src="https://github.com/qcodingdev/change-evidence/actions/workflows/ci.yml/badge.svg" alt="核心 CI"></a>
+  <a href="https://github.com/qcodingdev/change-evidence/actions/workflows/plugins.yml"><img src="https://github.com/qcodingdev/change-evidence/actions/workflows/plugins.yml/badge.svg" alt="插件 CI"></a>
+  <img src="https://img.shields.io/badge/隐私-仅本地分析-22c55e" alt="仅本地分析">
+  <img src="https://img.shields.io/badge/许可证-MIT-blue" alt="MIT 许可证">
+</p>
 
 ![Change Evidence 终端演示](assets/change-evidence-demo.gif)
 
-Change Evidence 是一个本地优先、CLI-first 的提交前风险摘要工具。它适合在 AI coding 工具一次修改大量文件后使用：你可以在提交前看到精简的终端报告，了解改了哪些区域、命中了哪些风险信号、提交前还需要检查什么。
+Change Evidence 把尚未提交的 Git diff 转成一份精简、可解释的风险报告。
+无论是 AI 编码代理还是人工一次改动了大量文件，你都可以在 commit 前快速确认
+哪些内容最需要关注。
 
-它不判断代码正确性，风险分析不联网，不修代码，不回滚，不批准提交，不创建 PR，也不会上传你的代码。它只读取本地 git diff，并输出克制的风险摘要。只有用户主动执行版本查询或更新命令时才会访问 npm。
+外层产品 **AI Change Radar** 同时提供原生 **VS Code 插件**和原生
+**JetBrains 插件**；底层继续使用 **Change Evidence** 引擎，并保留 `ce`
+**CLI/Git Hook**。普通分析不需要账号、API Key 或远程模型，不上传源码，
+也不包含遥测。
 
 ## 为什么需要 Change Evidence？
-你用 Cursor / Claude Code / Copilot 生成了 20 个文件，准备 git commit —— 但有没有混入敏感密钥？测试补了吗？生产配置改了吗？
 
-Change Evidence 在每次提交前打印一份精简的风险报告，帮你避免：
+你用 Cursor、Claude Code、Copilot 或其他编码代理改了 20 个文件，准备提交前，
+Change Evidence 可以快速回答：
 
-🔑 密钥泄露 —— 误提交 token、密码、API key
+- 是否混入疑似凭据字面量，或改动了认证、支付等高风险路径；
+- 是否修改了生产行为，却没有任何测试文件变化；
+- 是否改动了依赖、运行配置、数据库迁移或 CI/CD；
+- 变更规模是否异常，是否可能影响公开 API。
 
-🧪 测试缺失 —— 改了生产代码却忘了写测试
+所有信号均来自确定性规则，结果可解释。Change Evidence 不是编译器、完整语义
+分析器、专业密钥扫描器或自动 Code Review，也不会自动改写、删除或回滚用户文件。
 
-📦 配置漂移 —— 依赖或基础设施变更未检查
+## 选择使用方式
 
-🚨 高风险路径 —— auth、payment、database 等核心区域被意外改动
+| 入口 | 适合场景 | 提交保护 |
+|---|---|---|
+| AI Change Radar for VS Code | 在 VS Code 内审查暂存区或工作区 | 显式“审查并提交”；审查后暂存区变化会取消提交 |
+| AI Change Radar for JetBrains IDE | IDEA 系列 IDE 原生变更审查 | 分析提交窗口实际选中内容；中高风险必须继续或取消 |
+| CLI + Git Hook | 终端与跨 Git 客户端覆盖 | 可配置报告、询问或仅高风险阻止模式 |
 
+详见[插件使用说明](docs/PLUGIN_USAGE.md)、[隐私说明](PRIVACY.md)和
+[插件市场发布指南](docs/PLUGIN_PUBLISHING.md)。
 
-## 安装
+## 安装 AI Change Radar
+
+启用 JDK 21 后，一条命令构建两个可安装、可上传市场的成品包：
+
+```bash
+npm run build:plugins
+```
+
+构建结果：
+
+- `release-artifacts/ai-change-radar-0.1.0.vsix`
+- `release-artifacts/ai-change-radar-intellij-0.1.0.zip`
+
+VS Code 使用“Extensions: Install from VSIX…”安装 VSIX；JetBrains IDE 使用
+“Settings / Preferences → Plugins → Install Plugin from Disk…”安装 ZIP。
+
+## 安装 CLI
 
 需要 Node.js 20+ 和 `git`。
 

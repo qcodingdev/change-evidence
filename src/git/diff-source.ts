@@ -1,9 +1,22 @@
 import { execa } from 'execa';
-import type { DiffResult, DiffScope } from '../shared/types.js';
-import { buildFileChanges } from './diff-parser.js';
+import { lstat, readFile } from 'node:fs/promises';
+import { resolve, sep } from 'node:path';
+import type { DiffResult, DiffScope, FileChange } from '../shared/types.js';
+import {
+  buildFileChanges,
+  extractExtension,
+  redactSecretsForKeywords,
+} from './diff-parser.js';
+
+/** Maximum untracked file size read into memory for patch analysis. */
+export const MAX_UNTRACKED_PATCH_BYTES = 1024 * 1024;
+/** Maximum combined untracked patch content retained by one analysis. */
+export const MAX_TOTAL_UNTRACKED_PATCH_BYTES = 5 * 1024 * 1024;
 
 /** Error thrown when git is not installed or not on PATH. */
 export class GitUnavailableError extends Error {
+  readonly code = 'GIT_UNAVAILABLE';
+
   constructor(message = 'git is not installed or not on PATH') {
     super(message);
     this.name = 'GitUnavailableError';
@@ -12,6 +25,8 @@ export class GitUnavailableError extends Error {
 
 /** Error thrown when the cwd is not inside a git repository. */
 export class NotARepositoryError extends Error {
+  readonly code = 'NOT_A_REPOSITORY';
+
   constructor(message = 'not a git repository') {
     super(message);
     this.name = 'NotARepositoryError';
@@ -20,6 +35,8 @@ export class NotARepositoryError extends Error {
 
 /** Error thrown when a requested branch/base revision does not exist. */
 export class InvalidRevisionError extends Error {
+  readonly code = 'INVALID_REVISION';
+
   constructor(message = 'unknown or invalid git revision') {
     super(message);
     this.name = 'InvalidRevisionError';
@@ -33,6 +50,11 @@ export interface DiffSourceOptions {
   base?: string;
   /** Sensitive keywords for patch redaction; falls back to parser defaults. */
   sensitiveKeywords?: string[];
+  /**
+   * Include untracked, non-ignored files in working-tree analysis.
+   * Ignored for staged and branch scopes. Defaults to false for compatibility.
+   */
+  includeUntracked?: boolean;
   /**
    * Injection seam for tests: provide a custom git runner instead of execa.
    * Must accept (args, options) and return { stdout: string }.
@@ -56,7 +78,7 @@ function diffArgs(scope: DiffScope, base: string | undefined, format: string): s
 
   if (scope === 'branch') {
     if (!base) {
-      throw new Error('branch scope requires a base ref (--base)');
+      throw new InvalidRevisionError('branch scope requires a base ref (--base)');
     }
     return ['diff', `${base}...HEAD`, ...formatArgs];
   }
@@ -77,19 +99,141 @@ function classifyGitError(err: unknown): never {
     throw new GitUnavailableError();
   }
 
-  const stderr = e.stderr ?? '';
+  const stderr = e.stderr ?? e.message ?? '';
+  const normalized = stderr.toLowerCase();
 
   // "not a git repository"
-  if (stderr.includes('not a git repository') || stderr.includes('fatal: not a git')) {
+  if (
+    normalized.includes('not a git repository') ||
+    normalized.includes('fatal: not a git')
+  ) {
     throw new NotARepositoryError();
   }
 
   // An invalid base must fail closed instead of looking like an empty diff.
-  if (stderr.includes('unknown revision') || stderr.includes('bad revision')) {
+  if (
+    normalized.includes('unknown revision') ||
+    normalized.includes('bad revision') ||
+    normalized.includes('ambiguous argument') ||
+    normalized.includes('needed a single revision')
+  ) {
     throw new InvalidRevisionError(stderr.trim() || undefined);
   }
 
   throw err;
+}
+
+function parseNulPaths(raw: string): string[] {
+  if (!raw) return [];
+  return raw.split('\0').filter((path) => path.length > 0);
+}
+
+function isPathInside(root: string, candidate: string): boolean {
+  return candidate === root || candidate.startsWith(root + sep);
+}
+
+function countTextLines(content: string): number {
+  if (content.length === 0) return 0;
+  const lines = content.split('\n');
+  if (lines.at(-1) === '') lines.pop();
+  return lines.length;
+}
+
+function untrackedPatch(content: string, lineCount: number): string {
+  if (lineCount === 0) return '';
+  const lines = content.split('\n');
+  if (lines.at(-1) === '') lines.pop();
+  return [
+    `@@ -0,0 +1,${lineCount} @@`,
+    ...lines.map((line) => `+${line}`),
+  ].join('\n');
+}
+
+/**
+ * Safely collect untracked working-tree files. Symlinks, binary files and
+ * files over 1 MiB remain visible in the report but their contents are not
+ * read into a patch.
+ */
+async function collectUntrackedFiles(
+  rawPaths: string,
+  cwd: string,
+  sensitiveKeywords?: string[],
+): Promise<import('../shared/types.js').FileChange[]> {
+  const root = resolve(cwd);
+  const results: FileChange[] = [];
+  let retainedBytes = 0;
+
+  // Deliberately process sequentially: an unbounded Promise.all can read many
+  // 1 MiB files at once in repositories with generated, unignored output.
+  for (const path of parseNulPaths(rawPaths)) {
+    const absolutePath = resolve(root, path);
+    if (!isPathInside(root, absolutePath)) continue;
+
+    try {
+      const stat = await lstat(absolutePath);
+      if (!stat.isFile() || stat.isSymbolicLink()) {
+        results.push({
+          path,
+          status: 'added' as const,
+          additions: 0,
+          deletions: 0,
+          patch: '',
+          extension: extractExtension(path),
+        });
+        continue;
+      }
+
+      if (
+        stat.size > MAX_UNTRACKED_PATCH_BYTES ||
+        retainedBytes + stat.size > MAX_TOTAL_UNTRACKED_PATCH_BYTES
+      ) {
+        results.push({
+          path,
+          status: 'added' as const,
+          additions: 0,
+          deletions: 0,
+          patch: '',
+          extension: extractExtension(path),
+        });
+        continue;
+      }
+
+      const data = await readFile(absolutePath);
+      if (data.includes(0)) {
+        results.push({
+          path,
+          status: 'added' as const,
+          additions: 0,
+          deletions: 0,
+          patch: '',
+          extension: extractExtension(path),
+        });
+        continue;
+      }
+
+      const content = data.toString('utf8');
+      const additions = countTextLines(content);
+      results.push({
+        path,
+        status: 'added' as const,
+        additions,
+        deletions: 0,
+        patch: redactSecretsForKeywords(
+          untrackedPatch(content, additions),
+          sensitiveKeywords,
+        ),
+        extension: extractExtension(path),
+      });
+      retainedBytes += data.byteLength;
+    } catch (error) {
+      const code = (error as NodeJS.ErrnoException).code;
+      // Files can disappear between `git ls-files` and `readFile`.
+      if (code === 'ENOENT') continue;
+      throw error;
+    }
+  }
+
+  return results;
 }
 
 async function runGit(
@@ -124,13 +268,38 @@ export async function getDiff(
   const cwd = options.cwd ?? process.cwd();
   const runner = options.gitRunner;
 
-  const [nameStatus, numstat, unified] = await Promise.all([
+  const shouldIncludeUntracked =
+    scope === 'working-tree' && options.includeUntracked === true;
+  const [nameStatus, numstat, unified, untrackedPaths] = await Promise.all([
     runGit(runner, diffArgs(scope, options.base, 'name-status'), cwd),
     runGit(runner, diffArgs(scope, options.base, 'numstat'), cwd),
     runGit(runner, diffArgs(scope, options.base, 'unified=0'), cwd),
+    shouldIncludeUntracked
+      ? runGit(
+          runner,
+          ['ls-files', '--others', '--exclude-standard', '-z'],
+          cwd,
+        )
+      : Promise.resolve(''),
   ]);
 
-  const files = buildFileChanges(nameStatus, numstat, unified, options.sensitiveKeywords);
+  const files = buildFileChanges(
+    nameStatus,
+    numstat,
+    unified,
+    options.sensitiveKeywords,
+  );
+  if (shouldIncludeUntracked && untrackedPaths) {
+    const trackedPaths = new Set(files.map((file) => file.path));
+    const untrackedFiles = await collectUntrackedFiles(
+      untrackedPaths,
+      cwd,
+      options.sensitiveKeywords,
+    );
+    for (const file of untrackedFiles) {
+      if (!trackedPaths.has(file.path)) files.push(file);
+    }
+  }
 
   const totalAdditions = files.reduce((sum, f) => sum + f.additions, 0);
   const totalDeletions = files.reduce((sum, f) => sum + f.deletions, 0);

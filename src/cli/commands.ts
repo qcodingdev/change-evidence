@@ -7,11 +7,11 @@ import type {
   CliFlags,
   DiffScope,
   Language,
+  OutputFormat,
   ResolvedOptions,
 } from '../shared/types.js';
 import { loadConfig, resolveLanguage } from '../config/config-loader.js';
-import { getDiff } from '../git/diff-source.js';
-import { analyse } from '../analysis/risk-engine.js';
+import { analyzeRepository } from '../api/index.js';
 import { renderReport } from '../render/terminal-report.js';
 import { installHook, uninstallHook } from '../hook/install-hook.js';
 import { runHook } from '../hook/hook-runner.js';
@@ -79,17 +79,21 @@ async function defaultRunAnalysis(
     return;
   }
 
-  const diff = await getDiff(options.scope, {
-    base: options.base,
+  const report = await analyzeRepository({
     cwd,
-    sensitiveKeywords: options.config.risk.sensitiveKeywords,
-  });
-  const report = analyse(diff, options.config);
-  const output = renderReport(report, {
     scope: options.scope,
-    language: options.language,
-    noColor: options.noColor,
+    base: options.base,
+    includeUntracked: options.includeUntracked,
+    applyReportLimits: options.format === 'terminal',
+    config: options.config,
   });
+  const output = options.format === 'json'
+    ? JSON.stringify(report, null, 2)
+    : renderReport(report, {
+        scope: options.scope,
+        language: options.language,
+        noColor: options.noColor,
+      });
   process.stdout.write(output + '\n');
 
   if (options.hookMode) {
@@ -97,7 +101,10 @@ async function defaultRunAnalysis(
       promptYesNo: (question) => askHookYesNo(question, {
         language: options.language,
       }),
-      write: (m) => process.stdout.write(m + '\n'),
+      write: (m) => {
+        const stream = options.format === 'json' ? process.stderr : process.stdout;
+        stream.write(m + '\n');
+      },
     });
     if (result.exitCode !== 0) {
       process.exit(result.exitCode);
@@ -271,12 +278,15 @@ function resolveOptions(
   }
 
   const language: Language = resolveLanguage(flags.language, config.language);
+  const format: OutputFormat = flags.format === 'json' ? 'json' : 'terminal';
 
   return {
     scope,
     base,
     language,
     noColor: flags.color === false,
+    format,
+    includeUntracked: scope === 'working-tree' && flags.untracked !== false,
     hookMode: flags.hook === true,
     config,
   };
@@ -321,6 +331,13 @@ export function createProgram(deps: CreateProgramDeps = {}): Command {
     .option('--staged', 'analyse staged changes (git diff --cached)')
     .option('--base <ref>', 'analyse branch diff against <ref> (e.g. main)')
     .addOption(buildLanguageOption())
+    .addOption(
+      new Option('--format <format>', 'output format').choices([
+        'terminal',
+        'json',
+      ]),
+    )
+    .option('--no-untracked', 'exclude untracked files from working-tree analysis')
     .option('--no-color', 'disable colored output')
     .option('--hook', 'internal flag set by the installed pre-commit hook')
     .action(async (passedFlags: CliFlags) => {

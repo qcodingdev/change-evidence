@@ -43,6 +43,9 @@ describe('report limiter — maxRiskItems', () => {
     const config = { ...CONFIG, report: { ...CONFIG.report, maxRiskItems: 0 } };
     const report = analyse(makeDiff([makeFile('src/auth/A.java')]), config);
     expect(report.highRiskFiles).toHaveLength(0);
+    expect(report.signals).toHaveLength(0);
+    expect(report.truncation?.highRiskFilesOmitted).toBe(1);
+    expect(report.truncation?.signalsOmitted).toBeGreaterThan(0);
   });
 
   it('does not cap when changes are below the limit', () => {
@@ -50,6 +53,38 @@ describe('report limiter — maxRiskItems', () => {
     const files = [makeFile('src/auth/A.java'), makeFile('src/auth/B.java')];
     const report = analyse(makeDiff(files), config);
     expect(report.highRiskFiles).toHaveLength(2);
+  });
+
+  it('caps risk signals and reports how many were omitted', () => {
+    const config = { ...CONFIG, report: { ...CONFIG.report, maxRiskItems: 2 } };
+    const files = [
+      makeFile('src/auth/A.ts', { patch: '+ api_key = "x"' }),
+      makeFile('package.json'),
+      makeFile('.github/workflows/ci.yml'),
+    ];
+    const report = analyse(makeDiff(files), config);
+    expect(report.signals).toHaveLength(2);
+    expect(report.truncation?.signalsOmitted).toBeGreaterThan(0);
+    expect(report.signals.every((signal) => signal.severity === 'high')).toBe(true);
+  });
+});
+
+describe('report limiter — maxFiles', () => {
+  it('caps the high-risk file detail list independently', () => {
+    const config = {
+      ...CONFIG,
+      report: { ...CONFIG.report, maxFiles: 2, maxRiskItems: 10 },
+    };
+    const files = [
+      makeFile('src/auth/A.java'),
+      makeFile('src/auth/B.java'),
+      makeFile('src/auth/C.java'),
+      makeFile('src/auth/D.java'),
+    ];
+    const report = analyse(makeDiff(files), config);
+    expect(report.summary.highRiskFiles).toBe(4);
+    expect(report.highRiskFiles).toHaveLength(2);
+    expect(report.truncation?.highRiskFilesOmitted).toBe(2);
   });
 });
 

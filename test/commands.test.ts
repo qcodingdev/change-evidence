@@ -82,6 +82,8 @@ describe('createProgram CLI routing', () => {
     expect(analysisCalls[0].scope).toBe('working-tree');
     expect(analysisCalls[0].language).toBe('zh-CN');
     expect(analysisCalls[0].noColor).toBe(false);
+    expect(analysisCalls[0].format).toBe('terminal');
+    expect(analysisCalls[0].includeUntracked).toBe(true);
   });
 
   it('honors --staged', async () => {
@@ -105,6 +107,29 @@ describe('createProgram CLI routing', () => {
   it('passes --no-color through', async () => {
     const { analysisCalls } = await runProgram(['--no-color']);
     expect(analysisCalls[0].noColor).toBe(true);
+  });
+
+  it('supports structured JSON output', async () => {
+    const { analysisCalls } = await runProgram(['--format', 'json']);
+    expect(analysisCalls[0].format).toBe('json');
+  });
+
+  it('rejects an invalid output format', async () => {
+    await expect(runProgram(['--format', 'xml'])).rejects.toThrow(
+      CommanderError,
+    );
+  });
+
+  it('can exclude untracked files from working-tree analysis', async () => {
+    const { analysisCalls } = await runProgram(['--no-untracked']);
+    expect(analysisCalls[0].includeUntracked).toBe(false);
+  });
+
+  it('does not collect untracked files for staged or branch scopes', async () => {
+    const staged = await runProgram(['--staged']);
+    const branch = await runProgram(['--base', 'main']);
+    expect(staged.analysisCalls[0].includeUntracked).toBe(false);
+    expect(branch.analysisCalls[0].includeUntracked).toBe(false);
   });
 
   it('applies --language and validates the choice', async () => {

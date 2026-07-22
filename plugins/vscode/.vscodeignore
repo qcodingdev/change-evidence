@@ -1,0 +1,13 @@
+.github/**
+.vscode/**
+.gitignore
+src/**
+test/**
+scripts/**
+node_modules/**
+*.vsix
+dist/**/*.map
+tsconfig.json
+package-lock.json
+vitest.config.mts
+README.zh-CN.md

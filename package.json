@@ -7,6 +7,17 @@
     "change-evidence": "dist/cli/index.js",
     "ce": "dist/cli/index.js"
   },
+  "types": "dist/api/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/api/index.d.ts",
+      "import": "./dist/api/index.js"
+    },
+    "./api": {
+      "types": "./dist/api/index.d.ts",
+      "import": "./dist/api/index.js"
+    }
+  },
   "files": [
     "dist/",
     "assets/",
@@ -18,7 +29,10 @@
     "LICENSE"
   ],
   "scripts": {
-    "build": "tsup src/cli/index.ts --format esm --dts --clean --out-dir dist/cli",
+    "build": "npm run build:cli && npm run build:api",
+    "build:cli": "tsup src/cli/index.ts --format esm --dts --clean --out-dir dist/cli",
+    "build:api": "tsup src/api/index.ts --format esm --dts --clean --out-dir dist/api",
+    "build:plugins": "sh scripts/build-plugins.sh",
     "dev": "tsx src/cli/index.ts",
     "postinstall": "node scripts/postinstall.cjs",
     "prepare": "npm run build",

@@ -72,7 +72,10 @@ export function renderReport(
   lines.push('');
 
   // ── High-risk files ───────────────────────────────────────────
-  if (report.highRiskFiles.length > 0) {
+  if (
+    report.highRiskFiles.length > 0 ||
+    (report.truncation?.highRiskFilesOmitted ?? 0) > 0
+  ) {
     lines.push(c.bold(t('section.highRisk', language)));
     for (const hf of report.highRiskFiles) {
       const tag = c.severityLabel(hf.severity, severityTag(hf.severity));
@@ -82,6 +85,15 @@ export function renderReport(
       lines.push(`${tag} ${terminalSafePath(hf.path)}`);
       lines.push(`  ${c.dim(reasons)}`);
     }
+    if ((report.truncation?.highRiskFilesOmitted ?? 0) > 0) {
+      lines.push(
+        c.dim(
+          t('truncation.highRiskFiles', language, {
+            count: report.truncation!.highRiskFilesOmitted,
+          }),
+        ),
+      );
+    }
     lines.push('');
   }
 
@@ -89,10 +101,22 @@ export function renderReport(
   const displaySignals = report.signals.filter(
     (sig) => sig.type !== 'low-risk-collapsed',
   );
-  if (displaySignals.length > 0) {
+  if (
+    displaySignals.length > 0 ||
+    (report.truncation?.signalsOmitted ?? 0) > 0
+  ) {
     lines.push(c.bold(t('section.signals', language)));
     for (const sig of displaySignals) {
       lines.push(renderSignal(sig, language, c));
+    }
+    if ((report.truncation?.signalsOmitted ?? 0) > 0) {
+      lines.push(
+        c.dim(
+          t('truncation.signals', language, {
+            count: report.truncation!.signalsOmitted,
+          }),
+        ),
+      );
     }
     lines.push('');
   }

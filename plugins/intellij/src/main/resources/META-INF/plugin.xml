@@ -1,0 +1,38 @@
+<idea-plugin>
+    <id>dev.qcoding.aichangeradar</id>
+    <name>AI Change Radar</name>
+    <vendor email="qcodingdev@users.noreply.github.com"
+            url="https://github.com/qcodingdev/change-evidence">QCoding</vendor>
+    <url>https://github.com/qcodingdev/change-evidence</url>
+
+    <description><![CDATA[
+      <p><strong>Local risk checks for AI-assisted code changes.</strong></p>
+      <p>Runs locally. No LLM required. No source code upload. No external CLI required.</p>
+      <p>Powered by the open-source Change Evidence engine.</p>
+      <p>
+        <a href="https://github.com/qcodingdev/change-evidence">Source code</a> ·
+        <a href="https://github.com/qcodingdev/change-evidence/issues">Issue tracker</a>
+      </p>
+    ]]></description>
+
+    <depends>com.intellij.modules.platform</depends>
+    <depends>com.intellij.modules.vcs</depends>
+    <resource-bundle>messages.ChangeEvidenceBundle</resource-bundle>
+
+    <extensions defaultExtensionNs="com.intellij">
+        <checkinHandlerFactory
+                implementation="dev.qcoding.changeevidence.commit.ChangeEvidenceCheckinHandlerFactory"/>
+        <toolWindow id="AI Change Radar"
+                    anchor="bottom"
+                    icon="/icons/changeEvidence.svg"
+                    factoryClass="dev.qcoding.changeevidence.ui.ChangeEvidenceToolWindowFactory"/>
+    </extensions>
+
+    <actions>
+        <action id="AIChangeRadar.AnalyzeCurrentChanges"
+                class="dev.qcoding.changeevidence.actions.AnalyzeCurrentChangesAction"
+                icon="/icons/changeEvidence.svg">
+            <add-to-group group-id="ToolsMenu" anchor="last"/>
+        </action>
+    </actions>
+</idea-plugin>

@@ -210,6 +210,24 @@ describe('renderReport — secret never leaked', () => {
   });
 });
 
+describe('renderReport — report limits', () => {
+  it('makes omitted high-risk files and signals visible', () => {
+    const report = analyseFiles([makeFile('src/auth/AuthService.java')]);
+    report.truncation = {
+      highRiskFilesOmitted: 2,
+      signalsOmitted: 3,
+    };
+    const out = renderReport(report, {
+      scope: 'staged',
+      language: 'zh-CN',
+      noColor: true,
+    });
+    expect(out).toContain('另有 2 个高风险文件未展开');
+    expect(out).toContain('另有 3 个风险信号未展开');
+    expect(out).toContain('--format json');
+  });
+});
+
 describe('renderReport — path safety', () => {
   it('escapes control characters from Git file names', () => {
     const unsafePath = 'src/auth/line\n\u001b[31m.ts';

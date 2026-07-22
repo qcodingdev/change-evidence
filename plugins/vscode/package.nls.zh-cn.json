@@ -1,0 +1,15 @@
+{
+  "displayName": "AI Change Radar",
+  "description": "AI 编程代码变更风险雷达，在提交前发现敏感信息、测试缺失、配置变更和高风险代码。",
+  "untrustedWorkspace": "AI Change Radar 会运行 Git 并读取本地差异，因此需要信任工作区。",
+  "command.analyzeStaged": "分析暂存区变更",
+  "command.analyzeWorkingTree": "分析工作区变更",
+  "command.reviewAndCommit": "审查并提交",
+  "command.clearResults": "清空分析结果",
+  "command.openFile": "打开风险文件",
+  "command.showOutput": "显示输出",
+  "view.results": "变更风险",
+  "view.welcome": "提交前在本地审查代码变更。",
+  "config.includeUntracked": "分析工作区时包含未跟踪且未被忽略的文件。",
+  "config.revealOutputOnSuccess": "分析成功后自动显示 AI Change Radar 输出面板。"
+}

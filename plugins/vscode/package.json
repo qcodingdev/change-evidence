@@ -1,0 +1,208 @@
+{
+  "name": "ai-change-radar",
+  "displayName": "%displayName%",
+  "description": "%description%",
+  "version": "0.1.0",
+  "publisher": "qcodingdev",
+  "license": "MIT",
+  "pricing": "Free",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/qcodingdev/change-evidence.git",
+    "directory": "plugins/vscode"
+  },
+  "bugs": {
+    "url": "https://github.com/qcodingdev/change-evidence/issues"
+  },
+  "homepage": "https://github.com/qcodingdev/change-evidence#install-ai-change-radar",
+  "galleryBanner": {
+    "color": "#111827",
+    "theme": "dark"
+  },
+  "engines": {
+    "vscode": "^1.95.0"
+  },
+  "categories": [
+    "Linters",
+    "Other"
+  ],
+  "keywords": [
+    "git",
+    "diff",
+    "pre-commit",
+    "ai-coding",
+    "risk",
+    "security",
+    "local"
+  ],
+  "extensionKind": [
+    "workspace"
+  ],
+  "extensionDependencies": [
+    "vscode.git"
+  ],
+  "capabilities": {
+    "untrustedWorkspaces": {
+      "supported": false,
+      "description": "%untrustedWorkspace%"
+    },
+    "virtualWorkspaces": {
+      "supported": false
+    }
+  },
+  "activationEvents": [
+    "onView:aiChangeRadar.results",
+    "onCommand:aiChangeRadar.analyzeStaged",
+    "onCommand:aiChangeRadar.analyzeWorkingTree",
+    "onCommand:aiChangeRadar.reviewAndCommit",
+    "onCommand:aiChangeRadar.clearResults",
+    "onCommand:aiChangeRadar.showOutput"
+  ],
+  "main": "./dist/extension.js",
+  "icon": "media/icon.png",
+  "contributes": {
+    "commands": [
+      {
+        "command": "aiChangeRadar.analyzeStaged",
+        "title": "%command.analyzeStaged%",
+        "category": "AI Change Radar",
+        "icon": "$(shield)"
+      },
+      {
+        "command": "aiChangeRadar.analyzeWorkingTree",
+        "title": "%command.analyzeWorkingTree%",
+        "category": "AI Change Radar",
+        "icon": "$(search)"
+      },
+      {
+        "command": "aiChangeRadar.reviewAndCommit",
+        "title": "%command.reviewAndCommit%",
+        "category": "AI Change Radar",
+        "icon": "$(git-commit)"
+      },
+      {
+        "command": "aiChangeRadar.clearResults",
+        "title": "%command.clearResults%",
+        "category": "AI Change Radar",
+        "icon": "$(clear-all)"
+      },
+      {
+        "command": "aiChangeRadar.openFile",
+        "title": "%command.openFile%",
+        "category": "AI Change Radar"
+      },
+      {
+        "command": "aiChangeRadar.showOutput",
+        "title": "%command.showOutput%",
+        "category": "AI Change Radar"
+      }
+    ],
+    "menus": {
+      "scm/title": [
+        {
+          "command": "aiChangeRadar.analyzeStaged",
+          "when": "scmProvider == git",
+          "group": "navigation@20"
+        },
+        {
+          "command": "aiChangeRadar.reviewAndCommit",
+          "when": "scmProvider == git",
+          "group": "navigation@21"
+        }
+      ],
+      "view/title": [
+        {
+          "command": "aiChangeRadar.analyzeWorkingTree",
+          "when": "view == aiChangeRadar.results",
+          "group": "navigation@10"
+        },
+        {
+          "command": "aiChangeRadar.analyzeStaged",
+          "when": "view == aiChangeRadar.results",
+          "group": "navigation@11"
+        },
+        {
+          "command": "aiChangeRadar.clearResults",
+          "when": "view == aiChangeRadar.results && aiChangeRadar.hasResults",
+          "group": "navigation@20"
+        }
+      ],
+      "view/item/context": [
+        {
+          "command": "aiChangeRadar.openFile",
+          "when": "view == aiChangeRadar.results && viewItem == aiChangeRadar.fileRisk",
+          "group": "inline"
+        }
+      ],
+      "commandPalette": [
+        {
+          "command": "aiChangeRadar.openFile",
+          "when": "false"
+        }
+      ]
+    },
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "aiChangeRadar",
+          "title": "AI Change Radar",
+          "icon": "assets/activity.svg"
+        }
+      ]
+    },
+    "views": {
+      "aiChangeRadar": [
+        {
+          "id": "aiChangeRadar.results",
+          "name": "%view.results%",
+          "icon": "assets/activity.svg",
+          "contextualTitle": "AI Change Radar"
+        }
+      ]
+    },
+    "viewsWelcome": [
+      {
+        "view": "aiChangeRadar.results",
+        "contents": "%view.welcome%\n[Analyze working tree](command:aiChangeRadar.analyzeWorkingTree)\n[Analyze staged changes](command:aiChangeRadar.analyzeStaged)",
+        "when": "!aiChangeRadar.hasResults"
+      }
+    ],
+    "configuration": {
+      "title": "AI Change Radar",
+      "properties": {
+        "aiChangeRadar.includeUntracked": {
+          "type": "boolean",
+          "default": true,
+          "description": "%config.includeUntracked%"
+        },
+        "aiChangeRadar.revealOutputOnSuccess": {
+          "type": "boolean",
+          "default": false,
+          "description": "%config.revealOutputOnSuccess%"
+        }
+      }
+    }
+  },
+  "scripts": {
+    "clean": "node ./scripts/clean.mjs",
+    "build": "node ./scripts/build.mjs",
+    "watch": "node ./scripts/build.mjs --watch",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "check": "npm run typecheck && npm test && npm run build",
+    "package": "npm run check && vsce package --no-dependencies"
+  },
+  "dependencies": {
+    "execa": "9.5.2",
+    "picomatch": "4.0.2",
+    "yaml": "2.6.1"
+  },
+  "devDependencies": {
+    "@types/node": "22.10.2",
+    "@types/vscode": "1.95.0",
+    "@vscode/vsce": "3.6.2",
+    "esbuild": "0.28.1",
+    "typescript": "5.7.2",
+    "vitest": "4.1.9"
+  }
+}

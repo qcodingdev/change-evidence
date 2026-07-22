@@ -81,7 +81,11 @@ function computeOverallRisk(signals: Signal[]): RiskLevel {
  * This is the main entry point that wires together all signal detectors and
  * produces a RiskReport ready for rendering.
  */
-export function analyse(diff: DiffResult, config: ChangeEvidenceConfig): RiskReport {
+export function analyse(
+  diff: DiffResult,
+  config: ChangeEvidenceConfig,
+  options: { applyReportLimits?: boolean } = {},
+): RiskReport {
   const { files, totalAdditions, totalDeletions } = diff;
 
   // ── 1. Classify files ─────────────────────────────────────────
@@ -208,14 +212,41 @@ export function analyse(diff: DiffResult, config: ChangeEvidenceConfig): RiskRep
   // ── 10. Overall risk & checklist ──────────────────────────────
   const overallRisk = computeOverallRisk(allSignals);
   const checklistItems = generateChecklist(allSignals, config.report.maxChecklistItems);
+  const maxFiles = Math.max(0, config.report.maxFiles);
+  const maxRiskItems = Math.max(0, config.report.maxRiskItems);
+  const applyReportLimits = options.applyReportLimits !== false;
+  const visibleHighRiskFiles = applyReportLimits
+    ? highRiskFiles.slice(0, Math.min(maxFiles, maxRiskItems))
+    : highRiskFiles;
+  const severityRank: Record<RiskLevel, number> = {
+    ok: 0,
+    low: 1,
+    medium: 2,
+    high: 3,
+  };
+  const visibleSignals = applyReportLimits
+    ? allSignals
+        .map((signal, index) => ({ signal, index }))
+        .sort(
+          (a, b) =>
+            severityRank[b.signal.severity] - severityRank[a.signal.severity] ||
+            a.index - b.index,
+        )
+        .slice(0, maxRiskItems)
+        .map(({ signal }) => signal)
+    : allSignals;
 
   return {
     overallRisk,
     summary,
-    highRiskFiles: highRiskFiles.slice(0, config.report.maxRiskItems),
-    signals: allSignals,
+    highRiskFiles: visibleHighRiskFiles,
+    signals: visibleSignals,
     collapsedLowRiskCount,
     checklistItems,
+    truncation: {
+      highRiskFilesOmitted: highRiskFiles.length - visibleHighRiskFiles.length,
+      signalsOmitted: allSignals.length - visibleSignals.length,
+    },
   };
 }
 

@@ -69,6 +69,39 @@ describeOrSkip('CLI end-to-end (built binary)', () => {
     }
   }, 15000);
 
+  it('ce --format json emits one parseable RiskReport document', async () => {
+    const tmpRepo = mkdtempSync(join(tmpdir(), 'ce-e2e-json-'));
+    try {
+      await execa('git', ['init'], { cwd: tmpRepo });
+      writeFileSync(
+        join(tmpRepo, '.change-evidence.yml'),
+        'report:\n  maxFiles: 1\n  maxRiskItems: 1\n',
+      );
+      writeFileSync(
+        join(tmpRepo, 'new.ts'),
+        'export const api_key = "secret";\n',
+      );
+
+      const { exitCode, stdout, stderr } = await execa(
+        'node',
+        [CLI, '--format', 'json'],
+        { cwd: tmpRepo, reject: false },
+      );
+      expect(exitCode).toBe(0);
+      expect(stderr).toBe('');
+      const report = JSON.parse(stdout) as {
+        overallRisk: string;
+        summary: { fileCount: number };
+        signals: unknown[];
+      };
+      expect(report.summary.fileCount).toBe(2);
+      expect(report.overallRisk).toBe('high');
+      expect(report.signals.length).toBeGreaterThan(1);
+    } finally {
+      rmSync(tmpRepo, { recursive: true, force: true });
+    }
+  }, 15000);
+
   it('a prompt-mode hook blocks instead of committing when no terminal is available', async () => {
     const tmpRepo = mkdtempSync(join(tmpdir(), 'ce-e2e-hook-no-tty-'));
     try {

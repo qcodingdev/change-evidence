@@ -64,6 +64,14 @@ export const MESSAGES = {
     'zh-CN': '高风险文件',
     en: 'High-risk files',
   },
+  'truncation.highRiskFiles': {
+    'zh-CN': '另有 {count} 个高风险文件未展开，可使用 --format json 查看完整结果',
+    en: '{count} additional high-risk files are hidden; use --format json for the complete result',
+  },
+  'truncation.signals': {
+    'zh-CN': '另有 {count} 个风险信号未展开，可使用 --format json 查看完整结果',
+    en: '{count} additional risk signals are hidden; use --format json for the complete result',
+  },
 
   // Checklist marker
   'checklist.marker': { 'zh-CN': '[ ]', en: '[ ]' },

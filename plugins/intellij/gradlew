@@ -1,0 +1,24 @@
+#!/bin/sh
+
+# Lightweight POSIX launcher for the checked-in Gradle Wrapper.
+APP_HOME=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd -P) || exit 1
+CLASSPATH="$APP_HOME/gradle/wrapper/gradle-wrapper.jar"
+
+if [ -n "$JAVA_HOME" ]; then
+    JAVACMD="$JAVA_HOME/bin/java"
+    if [ ! -x "$JAVACMD" ]; then
+        echo "ERROR: JAVA_HOME does not point to a valid Java installation: $JAVA_HOME" >&2
+        exit 1
+    fi
+else
+    JAVACMD=java
+    if ! command -v "$JAVACMD" >/dev/null 2>&1; then
+        echo "ERROR: JAVA_HOME is not set and no java command is available." >&2
+        exit 1
+    fi
+fi
+
+exec "$JAVACMD" ${JAVA_OPTS:-} ${GRADLE_OPTS:-} \
+    -Dorg.gradle.appname=gradlew \
+    -classpath "$CLASSPATH" \
+    org.gradle.wrapper.GradleWrapperMain "$@"

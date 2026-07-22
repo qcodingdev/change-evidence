@@ -1,12 +1,19 @@
 import { describe, it, expect } from 'vitest';
 import { execFileSync } from 'node:child_process';
-import { mkdtempSync, renameSync, rmSync, writeFileSync } from 'node:fs';
+import {
+  mkdtempSync,
+  renameSync,
+  rmSync,
+  symlinkSync,
+  writeFileSync,
+} from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import {
   getDiff,
   GitUnavailableError,
   InvalidRevisionError,
+  MAX_UNTRACKED_PATCH_BYTES,
   NotARepositoryError,
 } from '../src/git/diff-source.js';
 
@@ -133,6 +140,149 @@ describe('getDiff', () => {
       base: 'nonexistent',
       gitRunner: runner,
     })).rejects.toThrow(InvalidRevisionError);
+  });
+
+  it('classifies ambiguous revision errors as InvalidRevisionError', async () => {
+    const runner = async () => {
+      const err = new Error('fatal') as Error & { stderr: string };
+      err.stderr = "fatal: ambiguous argument 'missing...HEAD'";
+      throw err;
+    };
+    await expect(getDiff('branch', {
+      base: 'missing',
+      gitRunner: runner,
+    })).rejects.toThrow(InvalidRevisionError);
+  });
+
+  it('optionally includes untracked non-ignored text files with redacted patches', async () => {
+    const repo = mkdtempSync(join(tmpdir(), 'ce-diff-untracked-'));
+    try {
+      execFileSync('git', ['init'], { cwd: repo, stdio: 'ignore' });
+      writeFileSync(join(repo, '.gitignore'), 'ignored.txt\n');
+      writeFileSync(
+        join(repo, 'new-config.ts'),
+        'const api_key = "must-not-leak";\nexport const ready = true;\n',
+      );
+      writeFileSync(join(repo, 'ignored.txt'), 'password=ignored\n');
+
+      const withoutUntracked = await getDiff('working-tree', { cwd: repo });
+      expect(withoutUntracked.files).toHaveLength(0);
+
+      const result = await getDiff('working-tree', {
+        cwd: repo,
+        includeUntracked: true,
+        sensitiveKeywords: ['api_key'],
+      });
+      expect(result.files).toHaveLength(2);
+      expect(result.files.map((file) => file.path)).toEqual([
+        '.gitignore',
+        'new-config.ts',
+      ]);
+      const configFile = result.files.find((file) => file.path === 'new-config.ts');
+      expect(configFile).toMatchObject({
+        status: 'added',
+        additions: 2,
+        deletions: 0,
+      });
+      expect(configFile?.patch).toContain('***REDACTED***');
+      expect(configFile?.patch).not.toContain('must-not-leak');
+      expect(result.totalAdditions).toBe(3);
+    } finally {
+      rmSync(repo, { recursive: true, force: true });
+    }
+  });
+
+  it.skipIf(process.platform === 'win32')(
+    'does not follow untracked symlinks outside the repository',
+    async () => {
+      const repo = mkdtempSync(join(tmpdir(), 'ce-diff-untracked-link-'));
+      const outside = join(tmpdir(), `ce-outside-${Date.now()}.txt`);
+      try {
+        execFileSync('git', ['init'], { cwd: repo, stdio: 'ignore' });
+        writeFileSync(outside, 'password=outside-secret\n');
+        symlinkSync(outside, join(repo, 'outside-link.txt'));
+
+        const result = await getDiff('working-tree', {
+          cwd: repo,
+          includeUntracked: true,
+        });
+        expect(result.files).toHaveLength(1);
+        expect(result.files[0]).toMatchObject({
+          path: 'outside-link.txt',
+          additions: 0,
+          patch: '',
+        });
+      } finally {
+        rmSync(repo, { recursive: true, force: true });
+        rmSync(outside, { force: true });
+      }
+    },
+  );
+
+  it('does not load oversized untracked files into a patch', async () => {
+    const repo = mkdtempSync(join(tmpdir(), 'ce-diff-untracked-large-'));
+    try {
+      execFileSync('git', ['init'], { cwd: repo, stdio: 'ignore' });
+      writeFileSync(
+        join(repo, 'generated.txt'),
+        Buffer.alloc(MAX_UNTRACKED_PATCH_BYTES + 1, 97),
+      );
+
+      const result = await getDiff('working-tree', {
+        cwd: repo,
+        includeUntracked: true,
+      });
+      expect(result.files).toHaveLength(1);
+      expect(result.files[0]).toMatchObject({
+        path: 'generated.txt',
+        additions: 0,
+        patch: '',
+      });
+    } finally {
+      rmSync(repo, { recursive: true, force: true });
+    }
+  });
+
+  it('includes an untracked binary file without exposing binary content', async () => {
+    const repo = mkdtempSync(join(tmpdir(), 'ce-diff-untracked-binary-'));
+    try {
+      execFileSync('git', ['init'], { cwd: repo, stdio: 'ignore' });
+      writeFileSync(join(repo, 'asset.bin'), Buffer.from([1, 2, 0, 3, 4]));
+
+      const result = await getDiff('working-tree', {
+        cwd: repo,
+        includeUntracked: true,
+      });
+      expect(result.files).toHaveLength(1);
+      expect(result.files[0]).toMatchObject({
+        path: 'asset.bin',
+        additions: 0,
+        deletions: 0,
+        patch: '',
+      });
+    } finally {
+      rmSync(repo, { recursive: true, force: true });
+    }
+  });
+
+  it('ignores unsafe and already-disappeared untracked paths', async () => {
+    const repo = mkdtempSync(join(tmpdir(), 'ce-diff-untracked-race-'));
+    try {
+      const runner = async (args: string[]) => {
+        if (args[0] === 'ls-files') {
+          return { stdout: '../outside.txt\0vanished.txt\0' };
+        }
+        return { stdout: '' };
+      };
+      const result = await getDiff('working-tree', {
+        cwd: repo,
+        includeUntracked: true,
+        gitRunner: runner,
+      });
+      expect(result.files).toHaveLength(0);
+    } finally {
+      rmSync(repo, { recursive: true, force: true });
+    }
   });
 
   it.skipIf(process.platform === 'win32')(

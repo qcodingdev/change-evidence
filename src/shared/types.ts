@@ -10,6 +10,9 @@ export type RiskLevel = 'ok' | 'low' | 'medium' | 'high';
 /** What diff scope the user asked to analyse. */
 export type DiffScope = 'working-tree' | 'staged' | 'branch';
 
+/** Machine-readable or human-readable CLI output. */
+export type OutputFormat = 'terminal' | 'json';
+
 /** Full configuration model (merged result). */
 export interface ChangeEvidenceConfig {
   language: Language;
@@ -43,6 +46,12 @@ export interface CliFlags {
   staged?: boolean;
   base?: string;
   language?: string;
+  format?: string;
+  /**
+   * Untracked-file flag. Defined via `--no-untracked`, so commander stores
+   * `true` by default and `false` when the flag is passed.
+   */
+  untracked?: boolean;
   /**
    * Color flag. Defined via `--no-color`, so commander stores the negated
    * value here: `true` by default, `false` when `--no-color` is passed.
@@ -57,6 +66,8 @@ export interface ResolvedOptions {
   base?: string;
   language: Language;
   noColor: boolean;
+  format: OutputFormat;
+  includeUntracked: boolean;
   hookMode?: boolean;
   config: ChangeEvidenceConfig;
 }
@@ -167,4 +178,9 @@ export interface RiskReport {
   collapsedLowRiskCount: number;
   /** Actionable pre-commit checklist items. */
   checklistItems: string[];
+  /** Details about report items omitted by configured display limits. */
+  truncation?: {
+    highRiskFilesOmitted: number;
+    signalsOmitted: number;
+  };
 }

@@ -8,9 +8,23 @@ This project follows semantic versioning where practical.
 
 ### Added
 
+- Add a publish-ready VS Code extension with staged and working-tree analysis,
+  native tree/Problems/output integration, and stale-index-safe Review & Commit.
+- Add a native IntelliJ Platform plugin with current-change analysis, a risk
+  report tool window, file navigation, and medium/high-risk commit confirmation.
+- Add a side-effect-free TypeScript analysis API and machine-readable JSON CLI
+  output for editor integrations.
+- Include safe, bounded analysis of untracked, non-ignored working-tree files.
+- Add marketplace artwork, localized listing copy, privacy documentation,
+  release packaging automation, and plugin CI.
 - Add `ce update` for npm-managed global updates.
 - Add `ce version` and `ce update --check` for explicit latest-version queries and upgrade reminders.
 - Add confirmed `ce uninstall` and non-interactive `ce uninstall --yes` flows that safely remove the current managed hook before uninstalling the global CLI.
+
+### Changed
+
+- Enforce configured terminal report limits while retaining full summary
+  counts and showing how many details were omitted.
 
 ## 0.1.1 - 2026-07-15
 
