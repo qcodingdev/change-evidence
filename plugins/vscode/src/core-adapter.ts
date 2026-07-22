@@ -25,6 +25,16 @@ export async function analyzeWorkspace(
   scope: DiffScope,
   includeUntracked: boolean,
 ): Promise<CoreAnalysisOutcome> {
+  let repositoryRoot: string;
+  try {
+    repositoryRoot = await resolveRepositoryRoot(cwd);
+  } catch (error) {
+    return {
+      ok: false,
+      error: fingerprintAnalysisError(error),
+    };
+  }
+
   let stagedBefore: string | undefined;
   let report: RiskReport | undefined;
   let stagedAfter: string | undefined;
@@ -32,7 +42,9 @@ export async function analyzeWorkspace(
   for (let attempt = 0; attempt < 2; attempt++) {
     try {
       stagedBefore =
-        scope === 'staged' ? await stagedDiffFingerprint(cwd) : undefined;
+        scope === 'staged'
+          ? await stagedDiffFingerprint(repositoryRoot)
+          : undefined;
     } catch (error) {
       return {
         ok: false,
@@ -52,7 +64,9 @@ export async function analyzeWorkspace(
     report = outcome.report;
     try {
       stagedAfter =
-        scope === 'staged' ? await stagedDiffFingerprint(cwd) : undefined;
+        scope === 'staged'
+          ? await stagedDiffFingerprint(repositoryRoot)
+          : undefined;
     } catch (error) {
       return {
         ok: false,
@@ -81,7 +95,6 @@ export async function analyzeWorkspace(
       },
     };
   }
-  const repositoryRoot = await resolveRepositoryRoot(cwd).catch(() => cwd);
   return {
     ok: true,
     report,
