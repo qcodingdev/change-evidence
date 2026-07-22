@@ -255,6 +255,24 @@ async function runGit(
 }
 
 /**
+ * Wait for every Git subprocess before surfacing a failure. Promise.all would
+ * reject immediately and leave sibling Git processes briefly running, which
+ * can keep repository files locked on Windows.
+ */
+async function waitForGitOutputs(
+  commands: Array<Promise<string>>,
+): Promise<string[]> {
+  const results = await Promise.allSettled(commands);
+  const failure = results.find(
+    (result): result is PromiseRejectedResult => result.status === 'rejected',
+  );
+  if (failure) throw failure.reason;
+  return results.map(
+    (result) => (result as PromiseFulfilledResult<string>).value,
+  );
+}
+
+/**
  * Collect the git diff for the requested scope and return a structured
  * DiffResult. Never throws for "no changes" — returns an empty result.
  *
@@ -270,7 +288,7 @@ export async function getDiff(
 
   const shouldIncludeUntracked =
     scope === 'working-tree' && options.includeUntracked === true;
-  const [nameStatus, numstat, unified, untrackedPaths] = await Promise.all([
+  const [nameStatus, numstat, unified, untrackedPaths] = await waitForGitOutputs([
     runGit(runner, diffArgs(scope, options.base, 'name-status'), cwd),
     runGit(runner, diffArgs(scope, options.base, 'numstat'), cwd),
     runGit(runner, diffArgs(scope, options.base, 'unified=0'), cwd),

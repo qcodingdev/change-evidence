@@ -154,6 +154,25 @@ describe('getDiff', () => {
     })).rejects.toThrow(InvalidRevisionError);
   });
 
+  it('waits for sibling Git commands before surfacing a failure', async () => {
+    let completedSiblings = 0;
+    const runner = async (args: string[]) => {
+      if (args.includes('--name-status')) {
+        const error = new Error('fatal') as Error & { stderr: string };
+        error.stderr = 'fatal: not a git repository';
+        throw error;
+      }
+      await new Promise((resolve) => setTimeout(resolve, 20));
+      completedSiblings++;
+      return { stdout: '' };
+    };
+
+    await expect(
+      getDiff('working-tree', { gitRunner: runner }),
+    ).rejects.toThrow(NotARepositoryError);
+    expect(completedSiblings).toBe(2);
+  });
+
   it('optionally includes untracked non-ignored text files with redacted patches', async () => {
     const repo = mkdtempSync(join(tmpdir(), 'ce-diff-untracked-'));
     try {
