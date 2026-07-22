@@ -10,6 +10,15 @@ import {
   tryAnalyzeRepository,
 } from '../src/api/index.js';
 
+function removeTempDirectory(path: string): void {
+  rmSync(path, {
+    recursive: true,
+    force: true,
+    maxRetries: 5,
+    retryDelay: 100,
+  });
+}
+
 describe('public repository analysis API', () => {
   it('returns a RiskReport without writing or exiting', async () => {
     const repo = mkdtempSync(join(tmpdir(), 'ce-api-'));
@@ -39,7 +48,7 @@ describe('public repository analysis API', () => {
       exitSpy.mockRestore();
       stdoutSpy.mockRestore();
       stderrSpy.mockRestore();
-      rmSync(repo, { recursive: true, force: true });
+      removeTempDirectory(repo);
     }
   });
 
@@ -55,7 +64,7 @@ describe('public repository analysis API', () => {
         },
       });
     } finally {
-      rmSync(directory, { recursive: true, force: true });
+      removeTempDirectory(directory);
     }
   });
 
@@ -74,7 +83,7 @@ describe('public repository analysis API', () => {
         expect(outcome.error.message).toMatch(/bad revision|ambiguous argument/);
       }
     } finally {
-      rmSync(repo, { recursive: true, force: true });
+      removeTempDirectory(repo);
     }
   });
 
@@ -106,7 +115,7 @@ describe('public repository analysis API', () => {
       expect(limited.highRiskFiles).toHaveLength(1);
       expect(limited.truncation?.signalsOmitted).toBeGreaterThan(0);
     } finally {
-      rmSync(repo, { recursive: true, force: true });
+      removeTempDirectory(repo);
     }
   });
 });
