@@ -48,19 +48,16 @@ matched field name, file, and line.
 - Uses only the IntelliJ Platform and VCS modules, so the packaged plugin can be
   installed in compatible JetBrains IDEs that provide VCS support.
 
-## Install a local build
+## Install
 
-1. Build the distribution:
+1. Open **Settings / Preferences > Plugins > Marketplace**.
+2. Search for **AI Change Radar** by **QCoding**.
+3. Select **Install** and restart the IDE if requested.
 
-   ```bash
-   cd plugins/intellij
-   ./gradlew clean test verifyPluginProjectConfiguration buildPlugin
-   ```
-
-2. In the IDE, open
-   **Settings/Preferences > Plugins > gear icon > Install Plugin from Disk**.
-3. Select `build/distributions/ai-change-radar-intellij-0.1.0.zip`.
-4. Restart the IDE if requested.
+For manual or offline installation, download the plugin `.zip` from the
+[latest GitHub Release](https://github.com/qcodingdev/change-evidence/releases/latest),
+then choose **Install Plugin from Disk** from the Plugins gear
+menu. No JDK, Node.js, or external CLI installation is required.
 
 ## Use it
 
@@ -79,65 +76,12 @@ high-risk changes show a confirmation dialog:
 The plugin does not automatically roll back, delete, stage, unstage, or rewrite
 changes.
 
-## Developer build and verification
-
-Requirements:
-
-- JDK 21 or newer.
-- Gradle Wrapper included in this directory.
-
-Run the full local verification:
-
-```bash
-./gradlew clean test verifyPluginProjectConfiguration verifyPluginStructure buildPlugin verifyPlugin
-```
-
-To build against a local IntelliJ IDEA installation instead of downloading the
-configured platform:
-
-```bash
-./gradlew clean test buildPlugin \
-  -PlocalIdeaPath="/Applications/IntelliJ IDEA.app"
-```
-
-## Sign and publish to JetBrains Marketplace
-
-1. Create the `QCoding` publisher and the first plugin listing in
-   [JetBrains Marketplace](https://plugins.jetbrains.com/).
-2. Confirm that the listing uses plugin ID `dev.qcoding.aichangeradar`.
-3. Create a Marketplace publishing token and a JetBrains plugin signing
-   certificate.
-4. Export the following values without committing them:
-
-   ```bash
-   export PUBLISH_TOKEN="..."
-   export CERTIFICATE_CHAIN="-----BEGIN CERTIFICATE-----..."
-   export PRIVATE_KEY="-----BEGIN PRIVATE KEY-----..."
-   export PRIVATE_KEY_PASSWORD="..."
-   ```
-
-5. Verify and sign:
-
-   ```bash
-   ./gradlew clean test verifyPluginProjectConfiguration verifyPluginStructure verifyPlugin signPlugin
-   ```
-
-6. Publish the signed archive:
-
-   ```bash
-   ./gradlew publishPlugin
-   ```
-
-For the first release, JetBrains reviews the listing before it becomes public.
-Keep the repository URL, issue tracker, license, screenshots, privacy statement,
-and release notes complete in the Marketplace form.
-
 ## Privacy and security
 
 Analysis is performed in the IDE process. No source text, file path, finding,
 credential, telemetry, or account information is sent to a remote service by
 this plugin.
 
-Source: <https://github.com/qcodingdev/change-evidence>
-Issues: <https://github.com/qcodingdev/change-evidence/issues>
-License: [MIT](LICENSE)
+- Source: <https://github.com/qcodingdev/change-evidence>
+- Issues: <https://github.com/qcodingdev/change-evidence/issues>
+- License: [MIT](LICENSE)

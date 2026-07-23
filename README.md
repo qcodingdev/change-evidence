@@ -53,25 +53,33 @@ and it never automatically rewrites or rolls back user files.
 | AI Change Radar for JetBrains IDEs | Native IDEA-family change review | Analyzes the exact selected commit changes; medium/high risk requires Continue or Cancel |
 | CLI + Git hook | Terminal use and repository-wide Git-client coverage | Configurable report, prompt, or high-risk block mode |
 
-See [IDE plugin usage](docs/PLUGIN_USAGE.md), [privacy](PRIVACY.md), and the
-[marketplace publishing guide](docs/PLUGIN_PUBLISHING.md).
+See [IDE plugin usage](docs/PLUGIN_USAGE.md) and [privacy](PRIVACY.md).
 
 ## Install AI Change Radar
 
-With JDK 21 active, build both ready-to-install marketplace archives:
+The editor plugins include the analysis engine. You do not need Node.js, JDK,
+the `ce` CLI, an account, or an API key.
 
-```bash
-npm run build:plugins
-```
+### VS Code and Cursor
 
-The command produces:
+1. Open **Extensions**.
+2. Search for **AI Change Radar** by **QCoding**.
+3. Select **Install**.
 
-- `release-artifacts/ai-change-radar-0.1.0.vsix`
-- `release-artifacts/ai-change-radar-intellij-0.1.0.zip`
+For manual installation, download the `.vsix` from the
+[latest GitHub Release](https://github.com/qcodingdev/change-evidence/releases/latest),
+then run **Extensions: Install from VSIX…** from the Command Palette.
 
-Install the VSIX with **Extensions: Install from VSIX…** in VS Code. Install the
-ZIP with **Settings / Preferences → Plugins → Install Plugin from Disk…** in a
-compatible JetBrains IDE.
+### JetBrains IDEs
+
+1. Open **Settings / Preferences → Plugins → Marketplace**.
+2. Search for **AI Change Radar** by **QCoding**.
+3. Select **Install** and restart the IDE if requested.
+
+For manual installation, download the plugin `.zip` from the
+[latest GitHub Release](https://github.com/qcodingdev/change-evidence/releases/latest),
+then choose **Install Plugin from Disk…** from the Plugins gear menu.
+The first public preview targets IntelliJ Platform 2026.1 or later.
 
 ## Install the CLI
 
@@ -346,6 +354,10 @@ Useful local commands:
 npm run dev -- --staged
 node dist/cli/index.js --staged --no-color
 ```
+
+JDK 21 is required only for contributors who build the JetBrains plugin from
+source. Plugin build and marketplace release instructions are maintained in
+[the publishing guide](docs/PLUGIN_PUBLISHING.md).
 
 ## Author
 

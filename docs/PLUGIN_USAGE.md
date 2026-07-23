@@ -9,13 +9,18 @@ an account, API key, cloud service, or remote AI model.
 
 ### Install
 
-From a release artifact:
+Open **Extensions**, search for **AI Change Radar** by **QCoding**, and select
+**Install**. The extension includes the analysis engine and does not require a
+global `ce` or Node.js installation.
+
+For manual or offline installation, download the `.vsix` from the
+[latest GitHub Release](https://github.com/qcodingdev/change-evidence/releases/latest)
+and use **Extensions: Install from VSIX…**. Command-line
+installation is also available:
 
 ```bash
-code --install-extension release-artifacts/ai-change-radar-0.1.0.vsix
+code --install-extension ai-change-radar-0.1.0.vsix
 ```
-
-Or use **Extensions: Install from VSIX…** from the Command Palette.
 
 ### Analyze changes
 
@@ -48,11 +53,14 @@ client must be covered.
 
 ### Install
 
-1. Open **Settings / Preferences → Plugins**.
-2. Choose the gear menu and **Install Plugin from Disk…**.
-3. Select
-   `release-artifacts/ai-change-radar-intellij-0.1.0.zip`.
-4. Restart the IDE if requested.
+1. Open **Settings / Preferences → Plugins → Marketplace**.
+2. Search for **AI Change Radar** by **QCoding**.
+3. Select **Install** and restart the IDE if requested.
+
+For manual or offline installation, download the plugin `.zip` from the
+[latest GitHub Release](https://github.com/qcodingdev/change-evidence/releases/latest)
+and choose **Install Plugin from Disk…** from the Plugins gear
+menu. Users do not need JDK, Node.js, or an external CLI.
 
 ### Analyze changes
 

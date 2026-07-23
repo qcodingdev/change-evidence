@@ -52,24 +52,33 @@ Change Evidence 可以快速回答：
 | AI Change Radar for JetBrains IDE | IDEA 系列 IDE 原生变更审查 | 分析提交窗口实际选中内容；中高风险必须继续或取消 |
 | CLI + Git Hook | 终端与跨 Git 客户端覆盖 | 可配置报告、询问或仅高风险阻止模式 |
 
-详见[插件使用说明](docs/PLUGIN_USAGE.md)、[隐私说明](PRIVACY.md)和
-[插件市场发布指南](docs/PLUGIN_PUBLISHING.md)。
+详见[插件使用说明](docs/PLUGIN_USAGE.md)和[隐私说明](PRIVACY.md)。
 
 ## 安装 AI Change Radar
 
-启用 JDK 21 后，一条命令构建两个可安装、可上传市场的成品包：
+插件已经内置分析引擎。普通用户不需要安装 Node.js、JDK、`ce` CLI，也不需要
+账号或 API Key。
 
-```bash
-npm run build:plugins
-```
+### VS Code 与 Cursor
 
-构建结果：
+1. 打开“扩展”。
+2. 搜索 **AI Change Radar**，认准发布者 **QCoding**。
+3. 点击“安装”。
 
-- `release-artifacts/ai-change-radar-0.1.0.vsix`
-- `release-artifacts/ai-change-radar-intellij-0.1.0.zip`
+如需离线安装，可从[最新 GitHub Release](https://github.com/qcodingdev/change-evidence/releases/latest)
+下载 `.vsix`，然后在命令面板执行
+“Extensions: Install from VSIX…”。
 
-VS Code 使用“Extensions: Install from VSIX…”安装 VSIX；JetBrains IDE 使用
-“Settings / Preferences → Plugins → Install Plugin from Disk…”安装 ZIP。
+### JetBrains IDE
+
+1. 打开“Settings / Preferences → Plugins → Marketplace”。
+2. 搜索 **AI Change Radar**，认准发布者 **QCoding**。
+3. 点击“Install”，根据提示重启 IDE。
+
+如需离线安装，可从[最新 GitHub Release](https://github.com/qcodingdev/change-evidence/releases/latest)
+下载插件 `.zip`，然后在 Plugins 齿轮
+菜单中选择“Install Plugin from Disk…”。首个公开预览版支持 IntelliJ Platform
+2026.1 及以上版本。
 
 ## 安装 CLI
 
@@ -344,6 +353,9 @@ npm run build
 npm run dev -- --staged
 node dist/cli/index.js --staged --no-color
 ```
+
+只有从源码构建 JetBrains 插件的贡献者才需要 JDK 21。插件构建和市场发布说明
+统一放在[发布指南](docs/PLUGIN_PUBLISHING.md)中。
 
 ## 作者
 
